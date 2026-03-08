@@ -198,10 +198,19 @@ logger:
 
 ## Changelog
 
+### v0.2.2
+- Fixed: 7 sensors ignored by Home Assistant due to duplicate unique IDs — BMS/EMS keys in `delta3_1500.py` were incorrectly mapped to MPPT/INV keys already used by other sensors; all now point to correct `bms_bmsStatus.*` / `bms_emsStatus.*` keys (confirmed present in live MQTT dumps)
+
+### v0.2.1
+- Fixed: all sensors freezing after ~1 minute — coordinator crashed when device sent `bms_kitInfo` as a JSON array; non-scalar MQTT values are now filtered before merging into coordinator data
+
+### v0.2.0
+- Initial public release
+
 ### v0.1.3
-- Fixed: MQTT verbinding verbreekt na verloop van tijd — keepalive verhoogd van 60s naar 120s, reconnect max van 30s naar 60s
-- Fixed: MQTT subscribe nu met QoS 1 voor betrouwbaardere berichtbezorging
-- Fixed: Log spam verminderd — MQTT berichten nu op DEBUG niveau i.p.v. WARNING
+- Fixed: MQTT connection dropping over time — keepalive increased from 60s to 120s, reconnect max from 30s to 60s
+- Fixed: MQTT subscribe now uses QoS 1 for more reliable message delivery
+- Fixed: Log spam reduced — MQTT messages now logged at DEBUG level instead of WARNING
 
 
 ### v0.1.2
