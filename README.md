@@ -202,7 +202,6 @@ logger:
 - Fixed: MQTT verbinding verbreekt na verloop van tijd — keepalive verhoogd van 60s naar 120s, reconnect max van 30s naar 60s
 - Fixed: MQTT subscribe nu met QoS 1 voor betrouwbaardere berichtbezorging
 - Fixed: Log spam verminderd — MQTT berichten nu op DEBUG niveau i.p.v. WARNING
-- Added: `.gitignore` vermeldt nu `push_to_github.ps1` en `push_to_github.py`
 
 
 ### v0.1.2
