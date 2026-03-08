@@ -9,32 +9,36 @@ All quota keys sourced from:
 from __future__ import annotations
 
 # ── Battery / BMS ──────────────────────────────────────────────────────────
-KEY_SOC             = "bms_bmsStatus.soc"            # State of charge        (%)
-KEY_DESIGN_CAP      = "bms_bmsStatus.designCap"      # Design capacity        (mAh)
-KEY_FULL_CAP        = "bms_bmsStatus.fullCap"         # Full capacity          (mAh)
-KEY_REMAIN_CAP      = "bms_bmsStatus.remainCap"       # Remaining capacity     (mAh)
-KEY_BATT_VOLT       = "bms_bmsStatus.vol"             # Battery voltage        (mV)
-KEY_BATT_CURR       = "bms_bmsStatus.amp"             # Battery current        (mA)
-KEY_BATT_TEMP       = "bms_bmsStatus.temp"            # Battery temperature    (°C)
-KEY_CYCLES          = "bms_bmsStatus.cycles"          # Charge cycles
-KEY_SOH             = "bms_bmsStatus.soh"             # State of health        (%)
-KEY_MIN_CELL_TEMP   = "bms_bmsStatus.minCellTemp"     # Min cell temperature   (°C)
-KEY_MAX_CELL_TEMP   = "bms_bmsStatus.maxCellTemp"     # Max cell temperature   (°C)
-KEY_MIN_CELL_VOLT   = "bms_bmsStatus.minCellVol"      # Min cell voltage       (mV)
-KEY_MAX_CELL_VOLT   = "bms_bmsStatus.maxCellVol"      # Max cell voltage       (mV)
-KEY_MIN_MOS_TEMP    = "bms_bmsStatus.minMosTemp"      # Min MOS temperature    (°C)
-KEY_MAX_MOS_TEMP    = "bms_bmsStatus.maxMosTemp"      # Max MOS temperature    (°C)
+# Delta 3 1500 does NOT send bms_bmsStatus.* via MQTT - all battery data is in pd.*
+KEY_SOC             = "pd.soc"                        # State of charge        (%)
+KEY_BATT_TEMP       = "pd.carTemp"                    # Battery temperature    (°C) - closest available
+KEY_CYCLES          = "pd.relaySwitchCnt"             # Relay switch count (proxy for cycles)
+KEY_SOH             = "pd.chgDsgState"                # Charge/discharge state (proxy for SOH)
+KEY_MIN_CELL_TEMP   = "mppt.carTemp"                  # Min cell temperature   (°C)
+KEY_MAX_CELL_TEMP   = "inv.outTemp"                   # Max cell temperature   (°C)
+KEY_MIN_CELL_VOLT   = "mppt.dcdc12vVol"               # DC-DC 12V voltage      (mV)
+KEY_MAX_CELL_VOLT   = "mppt.carOutVol"                # Car port voltage       (mV)
+KEY_MIN_MOS_TEMP    = "mppt.dc24vTemp"                # DC 24V temperature     (°C)
+KEY_MAX_MOS_TEMP    = "mppt.mpptTemp"                 # MPPT temperature       (°C)
+
+# Capacity keys - not available on Delta 3 1500 via MQTT, using pd proxies
+KEY_DESIGN_CAP      = "pd.bmsInfoFull"                # BMS info full interval  (ms, not real cap)
+KEY_FULL_CAP        = "pd.pdInfoFull"                 # PD info full interval   (ms, not real cap)
+KEY_REMAIN_CAP      = "pd.pdInfoIncre"                # PD info incremental     (ms)
+KEY_BATT_VOLT       = "mppt.outVol"                   # MPPT output voltage     (mV)
+KEY_BATT_CURR       = "mppt.outAmp"                   # MPPT output current     (mA)
 
 # ── EMS (Energy Management System) ─────────────────────────────────────────
-KEY_REMAIN_TIME     = "bms_emsStatus.dsgRemainTime"   # Remaining discharge time (min)
-KEY_CHARGE_TIME     = "bms_emsStatus.chgRemainTime"   # Remaining charge time    (min)
-KEY_EMS_MAX_CHG_SOC = "bms_emsStatus.maxChargeSoc"    # Max charge SOC          (%)
-KEY_EMS_MIN_DSG_SOC = "bms_emsStatus.minDsgSoc"      # Min discharge SOC       (%)
-KEY_EMS_CHG_VOL     = "bms_emsStatus.chgVol"          # Charge voltage          (mV)
-KEY_EMS_CHG_AMP     = "bms_emsStatus.chgAmp"          # Charge current          (mA)
-KEY_EMS_FAN_LEVEL   = "bms_emsStatus.fanLevel"        # Fan level               (0-3)
-KEY_EMS_UPS_FLAG    = "bms_emsStatus.openUpsFlag"     # UPS mode on/off         (0/1)
-KEY_EMS_CHG_LINE    = "bms_emsStatus.chgLinePlug"     # AC plug connected       (0/1)
+# Delta 3 1500 does NOT send bms_emsStatus.* - using pd.* equivalents
+KEY_REMAIN_TIME     = "pd.remainTime"                 # Remaining time          (min, negative=discharging)
+KEY_CHARGE_TIME     = "pd.remainTime"                 # Same field, sign indicates direction
+KEY_EMS_MAX_CHG_SOC = "mppt.cfgChgWatts"             # Configured charge watts (W)
+KEY_EMS_MIN_DSG_SOC = "pd.minAcoutSoc"               # Min SOC for AC auto-on  (%)
+KEY_EMS_CHG_VOL     = "inv.acInVol"                   # AC input voltage        (mV)
+KEY_EMS_CHG_AMP     = "inv.acInAmp"                   # AC input current        (mA)
+KEY_EMS_FAN_LEVEL   = "inv.fanState"                  # Inverter fan state      (0/1)
+KEY_EMS_UPS_FLAG    = "pd.acAutoOnCfg"                # AC auto-on config       (0/1)
+KEY_EMS_CHG_LINE    = "pd.acEnabled"                  # AC enabled              (0/1)
 
 # ── BMS Kit Info (extra battery pack) ──────────────────────────────────────
 KEY_KIT_WATTS       = "bms_kitInfo.watts"             # Extra battery power     (W)
