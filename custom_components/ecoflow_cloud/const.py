@@ -28,8 +28,8 @@ API_PATH_MQTT        = "/iot-open/sign/certification"
 API_PATH_DEVICE_LIST = "/iot-open/sign/device/list"
 
 # MQTT
-MQTT_KEEPALIVE          = 60
-MQTT_RECONNECT_INTERVAL = 30
+MQTT_KEEPALIVE          = 120
+MQTT_RECONNECT_INTERVAL = 60
 
 # Coordinator polling interval
 COORDINATOR_UPDATE_INTERVAL = 30  # seconds
