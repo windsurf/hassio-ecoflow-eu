@@ -198,6 +198,9 @@ logger:
 
 ## Changelog
 
+### v0.2.4 – Bugfix: coordinator crash on bms_kitInfo.watts array
+- Fixed: all sensors freezing when device sends `bms_kitInfo.watts` as a JSON array (triggered when AC charging starts) — non-scalar values (lists, dicts) are now filtered before updating coordinator state
+
 ### v0.2.3 – Bugfix: force update after HACS install
 - Fixed: HA did not prompt for restart after HACS update when version number was unchanged — bumped version so HACS correctly detects the update and requests a restart
 
