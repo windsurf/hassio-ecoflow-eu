@@ -198,6 +198,13 @@ logger:
 
 ## Changelog
 
+### v0.1.3
+- Fixed: MQTT verbinding verbreekt na verloop van tijd — keepalive verhoogd van 60s naar 120s, reconnect max van 30s naar 60s
+- Fixed: MQTT subscribe nu met QoS 1 voor betrouwbaardere berichtbezorging
+- Fixed: Log spam verminderd — MQTT berichten nu op DEBUG niveau i.p.v. WARNING
+- Added: `.gitignore` vermeldt nu `push_to_github.ps1` en `push_to_github.py`
+
+
 ### v0.1.2
 - **85+ entities enabled by default** — removed unnecessary `entity_registry_enabled_default=False` from most sensors, all switches and all number controls
 - Fixed: "Time Remaining" and "Time to Full" showing unavailable — added `pd.remainTime` as fallback key when EMS keys are absent (device only sends them while actively charging/discharging)
