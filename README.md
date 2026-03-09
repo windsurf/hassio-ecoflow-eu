@@ -104,7 +104,7 @@ After setup, use the **gear icon** on the integration card to change credentials
 | USB-C 1 / 2 Power | W | ✅ |
 | USB-C 1 / 2 Temperature | °C | off |
 | Wireless Charging Power | W | off |
-| Solar Charge Power (PD) | W | off |
+| Solar Charge Power | W | off |
 | **Energy totals** | | |
 | Cumulative AC / DC Charged | kWh | off |
 | Cumulative Charged / Discharged Energy | Wh | off |
@@ -197,6 +197,36 @@ logger:
 ---
 
 ## Changelog
+
+### v0.2.11 – Bugfix: entity ID alignment + code cleanup
+
+**Entity ID fixes (switch.py):**
+- Fixed: `x_boost` — was `xboost` (entity ID mismatch with HA slug)
+- Fixed: `beep_sound` — was `beep` (entity ID mismatch with HA slug)
+
+**Entity ID fix (number.py):**
+- Fixed: `dc12v_standby_time` — was `car_standby_time` (removed legacy "car" prefix, consistent with v0.2.9 DC 12V naming)
+
+**Code cleanup:**
+- Removed: unused import `KEY_DC12V_STATE` from `switch.py`
+- Removed: unused import `KEY_AC_SLOW_CHG_W` from `number.py`
+- Fixed: `_LOGGER.warning` → `_LOGGER.debug` for switch and number MQTT commands (was causing log spam in production)
+
+**Dashboard fix:**
+- Fixed: `sensor.ecoflow_delta_3_1500_state_of_health` → `state_of_health_bms_status` in `dashboard_ecoflow_v1.0.yaml`
+
+**README fix:**
+- Fixed: sensor table entry "Solar Charge Power (PD)" → "Solar Charge Power" (name changed in v0.2.9)
+
+**Upgrade note — manual HA cleanup required:**
+After upgrading, remove these stale entity registrations in HA (Settings → Devices & Services → Entities → filter on ecoflow → delete):
+- `switch.ecoflow_delta_3_1500_ac_charging_230v` (→ now `ac_charging`)
+- `switch.ecoflow_delta_3_1500_ac_auto_on_on_plug_in` (→ now `ac_auto_on`)
+- `switch.ecoflow_delta_3_1500_solar_charge_priority` (→ now `pv_charge_priority`)
+- `number.ecoflow_delta_3_1500_min_soc_for_ac_auto_on` (→ now `min_ac_soc`)
+- `number.ecoflow_delta_3_1500_car_port_standby_time` (→ now `dc12v_standby_time`)
+- `sensor.ecoflow_delta_3_1500_solar_charge_power_pd` (→ now `solar_charge_power`)
+- `sensor.ecoflow_delta_3_1500_battery_health` (→ now `state_of_health_bms_info`)
 
 ### v0.2.10 – Merge: v0.2.9 base + v0.2.8 extras
 
