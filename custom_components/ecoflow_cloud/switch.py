@@ -20,7 +20,6 @@ from .devices.delta3_1500 import (
     DEVICE_MODEL,
     KEY_AC_ENABLED,
     KEY_AC_XBOOST,
-    KEY_DC12V_STATE,
     KEY_USB_OUT_STATE,
     KEY_AC_CHG_PAUSE,
     KEY_BEEP_MODE,
@@ -68,7 +67,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         },
     ),
     EcoFlowSwitchDescription(
-        key="xboost",
+        key="x_boost",
         name="X-Boost",
         icon="mdi:lightning-bolt",
         state_key=KEY_AC_XBOOST,
@@ -159,7 +158,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
 
     # ── System ───────────────────────────────────────────────────────────
     EcoFlowSwitchDescription(
-        key="beep",
+        key="beep_sound",
         name="Beep Sound",
         icon="mdi:volume-high",
         state_key=KEY_BEEP_MODE,
@@ -239,7 +238,7 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             "operateType": self.entity_description.cmd_operate,
             "params":      self.entity_description.cmd_params(turn_on),
         }
-        _LOGGER.warning("Switch command → %s : %s", topic, cmd)
+        _LOGGER.debug("Switch command → %s : %s", topic, cmd)
         client.publish(topic, json.dumps(cmd), qos=1)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
