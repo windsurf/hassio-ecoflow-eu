@@ -266,7 +266,7 @@ sections:
         entity: sensor.ecoflow_delta_3_1500_battery_current
         name: Battery Current
       - type: tile
-        entity: sensor.ecoflow_delta_3_1500_state_of_health
+        entity: sensor.ecoflow_delta_3_1500_state_of_health_bms_status
         name: State of Health
       - type: tile
         entity: sensor.ecoflow_delta_3_1500_remaining_capacity
