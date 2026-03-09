@@ -62,10 +62,10 @@ After setup, use the **gear icon** on the integration card to change credentials
 | Entity | Unit | Default |
 |--------|------|---------|
 | Battery Level | % | ✅ |
-| State of Health | % | ✅ |
-| Cycles | | ✅ |
-| Remaining Time | min | ✅ |
-| Charge Remaining Time | min | ✅ |
+| Battery Health | % | ✅ |
+| Charge Cycles | | ✅ |
+| Time Remaining (discharge) | min | ✅ |
+| Time to Full (charge) | min | ✅ |
 | Battery Voltage | V | ✅ |
 | Battery Current | A | ✅ |
 | Battery Temperature | °C | ✅ |
@@ -80,25 +80,25 @@ After setup, use the **gear icon** on the integration card to change credentials
 | Extra Battery Power | W | off |
 | Extra Batteries Connected | | off |
 | **AC / Inverter** | | |
-| AC Out Power | W | ✅ |
-| AC In Power | W | ✅ |
-| AC In Volts / Current / Frequency | V / A / Hz | off |
-| AC Out Volts / Current / Frequency | V / A / Hz | off |
+| AC Output Power | W | ✅ |
+| AC Input Power (Mains) | W | ✅ |
+| AC Input Voltage / Current / Frequency | V / A / Hz | off |
+| AC Output Voltage / Current / Frequency | V / A / Hz | off |
 | AC Fast / Slow Charge Limit | W | off |
 | Inverter Temperature | °C | off |
 | DC Input Voltage / Current / Temperature | V / A / °C | off |
 | **Solar / MPPT** | | |
-| Solar In Power | W | ✅ |
-| Solar In Voltage / Current | V / A | off |
+| Solar Input Power | W | ✅ |
+| Solar Input Voltage / Current | V / A | off |
 | MPPT Output Power | W | off |
 | MPPT Temperature | °C | off |
-| DC (12V) Out Power | W | ✅ |
+| Car Port Output Power | W | ✅ |
 | Car Charger Input Power | W | off |
-| DC (12V) Temperature | °C | off |
-| DC (24V) Temperature | °C | off |
+| Car Port Temperature | °C | off |
+| DC 24V Temperature | °C | off |
 | DC-DC 12V Power | W | off |
 | **USB / PD** | | |
-| Total In / Out Power | W | ✅ |
+| Total Input / Output Power | W | ✅ |
 | USB-A 1 / 2 Power | W | ✅ |
 | USB-A QC 1 / 2 Power | W | ✅ |
 | USB-C 1 / 2 Power | W | ✅ |
@@ -113,41 +113,40 @@ After setup, use the **gear icon** on the integration card to change credentials
 | Battery Protection SOC | % | off |
 | WiFi Signal | dBm | off |
 | **Battery lifetime** | | |
-| State of Health (lifetime) | % | ✅ |
+| Total Charge Cycles | | ✅ |
 | Round-Trip Efficiency | % | off |
 | Self-Discharge Rate | %/day | off |
 | Deep Discharge Count | | off |
 | Internal Resistance | mΩ | off |
 
-### Switches (10)
+### Switches (9)
 
 | Entity | Default | Notes |
 |--------|---------|-------|
-| AC Enabled | ✅ | Turn 230V output on/off |
+| AC Output | ✅ | Turn 230V output on/off |
 | X-Boost | ✅ | Enable/disable X-Boost |
-| DC (12V) Enabled | ✅ | 12V car port on/off |
-| DC (24V) Enabled | off | 24V DC port on/off |
+| DC Output | ✅ | Car/DC port on/off |
 | AC Charging (230V) | ✅ | **Pause/resume mains charging** — temporary, resets on replug |
-| Prio Solar Charging | ✅ | Prioritise solar over AC |
+| Solar Charge Priority | ✅ | Prioritise solar over AC |
 | UPS Mode | ✅ | Enable/disable UPS pass-through |
-| AC Auto On | off | AC turns on when mains is connected |
-| AC Always On | off | Keep AC on even at low SOC |
-| Beeper | off | Enable/disable device beeps |
+| AC Auto-On (on plug-in) | off | AC turns on when mains is connected |
+| AC Always-On | off | Keep AC on even at low SOC |
+| Beep Sound | off | Enable/disable device beeps |
 
-### Number Controls (10)
+### Number Controls (9)
 
 | Entity | Range | Default |
 |--------|-------|---------|
-| AC Charging Power | 200–1500 W (step 100) | ✅ |
+| AC Charging Speed | 200–1500 W (step 100) | ✅ |
 | Max Charge Level | 50–100% (step 5) | ✅ |
 | Min Discharge Level | 0–30% (step 5) | ✅ |
 | Battery Protection SOC | 0–100% (step 5) | ✅ |
-| Unit Timeout | 0–720 min | ✅ |
-| AC Timeout | 0–720 min | ✅ |
-| DC (12V) Timeout | 0–720 min | off |
-| Screen Brightness | 0–100% (step 25) | ✅ |
-| Screen Timeout | 0–300 s | off |
-| Min SOC for AC Auto On | 0–100% (step 5) | off |
+| Standby Time | 0–720 min | ✅ |
+| AC Standby Time | 0–720 min | ✅ |
+| Car Port Standby Time | 0–720 min | off |
+| LCD Brightness | 0–100% (step 25) | ✅ |
+| LCD Timeout | 0–300 s | off |
+| Min SOC for AC Auto-On | 0–100% (step 5) | off |
 
 > Entities marked **off** are disabled by default. Enable them in Settings → Devices & Services → your device → the entity.
 
@@ -177,11 +176,11 @@ MQTT push is the primary data source. REST errors (1006, 8521) are non-fatal —
 
 ## Diagnostic Tool
 
-`examples/test_credentials.py` lets you verify credentials from the command line:
+`test_credentials.py` in the repository root lets you verify credentials from the command line:
 
 ```bash
 pip install requests
-python3 examples/test_credentials.py
+python3 test_credentials.py
 ```
 
 ---
@@ -199,18 +198,49 @@ logger:
 
 ## Changelog
 
-### v0.2.8 – Entity naming aligned with community standard
-- Changed: sensor names — `AC Out Power` / `AC In Power` (was Input/Output), `State of Health` (was Battery Health), `Remaining Time` / `Charge Remaining Time` (was Time Remaining / Time to Full), `Solar In Power/Voltage/Current`, `Total In/Out Power`, `DC (12V) Out Power` / `DC (12V) Temperature` (was Car Port), `DC (24V) Enabled` / `DC (24V) Temperature` (was DC 24V)
-- Changed: switch names — `AC Enabled`, `DC (12V) Enabled`, `Beeper`, `Prio Solar Charging`, `AC Always On`, `AC Auto On`
-- Changed: number names — `AC Charging Power`, `Screen Brightness`, `Screen Timeout`, `Unit Timeout`, `AC Timeout`, `DC (12V) Timeout`
-- Changed: dashboard fully translated to English
-- Fixed: GitHub token no longer hardcoded in push script — use `$env:GITHUB_TOKEN`
-- Note: only `ac_charging` → `ac_charging_230v` changes the entity ID; all other changes are display names only
+### v0.2.9 – Refactor: full naming overhaul + AC charging speed fix + USB switch fix
 
-### v0.2.7 – Bugfix: ac_charging_speed read SOC% instead of watts
-- Fixed: `ac_charging_speed` (now `AC Charging Power`) was reading `bms_emsStatus.chgRemainTime` (SOC%) instead of `inv.SlowChgWatts` — corrected `state_key` to `KEY_AC_SLOW_CHG_W`
-- Fixed: switch key `ac_charging` renamed to `ac_charging_230v` to match entity ID used in automations
-- Changed: MQTT data log level lowered from WARNING to DEBUG to reduce log spam
+**Fixes:**
+- Fixed: AC Charging Speed slider now uses `mppt.cfgChgWatts` as `state_key` — shows 200W correctly even when AC cable is unplugged
+- Fixed: AC charging command now sends `slowChgWatts` + `fastChgWatts` (was: `chgWatts` — ignored by device)
+- Fixed: USB Output switch now uses `MODULE_PD` (moduleType 1) — was MODULE_MPPT (5), device did not respond
+
+**Switch renames:**
+- `dc_output` → `usb_output` / "USB Output" (`pd.dcOutState`) — USB-A + USB-C ports
+- `dc24v_output` → `dc_output` / "DC Output" (`mppt.dc24vState`) — 12V car port + Anderson connectors
+- `AC Charging 230V` → `AC Charging`
+
+**Sensor renames:**
+- Car Port Output Power → DC 12V Output Power
+- Car Charger Input Power → DC 12V Input Power
+- Car Port Temperature → DC 12V Temperature
+- DC-DC 12V Power → MPPT DC Converter Power
+- DC 24V Temperature → DC Output Temperature
+- AC Input Power (Mains) → AC Input Power
+- AC Slow/Fast Charge Limit → AC Slow/Fast Charge Watts
+- Solar Charge Power (PD) → Solar Charge Power
+- DC Input Current/Voltage/Temperature → Inverter DC Input Current/Voltage/Temperature
+- Battery Health (BMS) → State of Health (BMS Status)
+- Battery Health → State of Health (BMS Info)
+- Removed: Wireless Charging Power (not present on Delta 3 1500)
+
+**Number renames:**
+- Car Port Standby Time → DC 12V Standby Time
+- Standby Time → Device Standby Time
+- AC Standby Time → AC Output Standby Time
+
+**Code refactor:**
+- All `KEY_CAR_*` constants → `KEY_DC12V_*`
+- `KEY_DC_OUT_STATE` → `KEY_USB_OUT_STATE` (`pd.dcOutState`)
+- `KEY_DC24V_STATE` → `KEY_DC_OUT_STATE` (`mppt.dc24vState`)
+- `KEY_DC24V_TEMP` → `KEY_DC_OUT_TEMP`
+- Added: `KEY_MPPT_CFG_CHG_W` = `mppt.cfgChgWatts`
+
+### v0.2.8 – Bugfix: AC Charging Speed slider NameError
+- Fixed: `NameError: KEY_AC_IN_W` — import statement corrected in `number.py`
+
+### v0.2.7 – Added: AC Charging Speed slider
+- Added: `number.ecoflow_delta_3_1500_ac_charging_speed` — slider 200–1500W (step 100W) to control AC charging limit
 
 ### v0.2.6 – Added example dashboard
 - Added: `examples/dashboard_delta3_1500.yaml` — complete HA dashboard covering all entities (battery, AC, solar, DC, USB, settings, BMS detail, statistics)
@@ -235,14 +265,52 @@ logger:
 - Changed: 35 of 75 sensors disabled by default (never or rarely receive data)
 - Changed: Push script now automatically removes files from GitHub that no longer exist locally
 
-### v0.1.0–v0.1.3
-- First stable release: 65+ sensors, 9 switches, 9 number controls — complete Delta 3 1500 coverage
-- MQTT reliability fixes: keepalive, QoS 1, reduced log spam
-- 85+ entities enabled by default; fallback key support for Time Remaining / Time to Full sensors
-- Various command payload and scaling fixes (tls_set, moduleType, acOutCfg, chgWatts)
+### v0.1.3
+- Fixed: MQTT connection dropping over time — keepalive increased from 60s to 120s, reconnect max from 30s to 60s
+- Fixed: MQTT subscribe now uses QoS 1 for more reliable message delivery
+- Fixed: Log spam reduced — MQTT messages now logged at DEBUG level instead of WARNING
 
-### v0.0.11–v0.0.21
-- Early iterations: App Login mode, MQTT ClientID fix, Base64 password encoding, auto-detect connection mode, 12 UI translations (NL/DE/FR/ES/IT/PL/PT/SV/DA/FI/CS/HU), various key and scaling fixes
+
+### v0.1.2
+- **85+ entities enabled by default** — removed unnecessary `entity_registry_enabled_default=False` from most sensors, all switches and all number controls
+- Fixed: "Time Remaining" and "Time to Full" showing unavailable — added `pd.remainTime` as fallback key when EMS keys are absent (device only sends them while actively charging/discharging)
+- Added `fallback_key` support in sensor entity for resilient key resolution
+
+### v0.1.1
+- Fixed: "Time Remaining" and "Time to Full" sensors showing unavailable after HA restart
+
+### v0.1.0
+- **65+ sensors** — complete coverage of all MQTT keys observed on Delta 3 1500
+- **9 switches** — added Solar Charge Priority, UPS Mode, AC Auto-On, AC Always-On, DC 24V Output, Beep
+- **9 number controls** — added Battery Protection SOC, Car Port Standby, LCD Timeout, Min SOC for AC Auto-On
+- **AC Charging Speed** slider: correct 200–1500 W range for Delta 3 1500 (Delta 2 is max 1200 W)
+- Fixed: `tls_set()` blocking call moved to executor thread (removes HA event loop warnings)
+- Fixed: `rest_quota_unavailable` attribute missing on `EcoFlowPrivateAPI` (removed setup error)
+- Fixed: `moduleType` now correct per command (was always `0`)
+- Fixed: `acOutCfg` params use `255` for unchanged fields (was `0`, risked resetting voltage/frequency)
+- Fixed: AC Charging pause now sends `slowChgWatts/fastChgWatts` instead of deprecated `chgWatts`
+- Added: `bms_bmsInfo` lifetime statistics sensors (SOH, cumulative energy, internal resistance, etc.)
+- Added: energy totals with correct scaling (kWh ×0.001, Wh raw)
+- Added: voltage/current sensors with correct mV→V and mA→A scaling
+
+### v0.0.21
+- Fixed: Time to Full using correct key `bms_emsStatus.chgRemainTime` (was `bms_bmsStatus.chgTime`)
+- Added: coordinator logs all MQTT keys at WARNING level for debugging
+
+### v0.0.20
+- Added Auto-detect connection mode based on serial number prefix
+- Added 12 UI translations: NL, DE, FR, ES, IT, PL, PT, SV, DA, FI, CS, HU
+- Fixed: `KeyError` on setup when using App Login
+
+### v0.0.18
+- Fixed App Login password encoding: **Base64** (confirmed from mmiller7/ecoflow-withoutflow)
+
+### v0.0.16
+- Removed `Host` header from requests session
+- Fixed MQTT ClientID format to `ANDROID_{8digits}_{userId_decimal}`
+
+### v0.0.11
+- Added App Login mode as alternative to Developer API
 
 ### v0.0.1–v0.0.10
 - Initial versions: entity availability, payload parsing, quota/get, signing algorithm
