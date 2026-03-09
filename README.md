@@ -198,6 +198,19 @@ logger:
 
 ## Changelog
 
+### v0.2.8 – Entity naming aligned with community standard
+- Changed: sensor names — `AC Out Power` / `AC In Power` (was Input/Output), `State of Health` (was Battery Health), `Remaining Time` / `Charge Remaining Time` (was Time Remaining / Time to Full), `Solar In Power/Voltage/Current`, `Total In/Out Power`, `DC (12V) Out Power` / `DC (12V) Temperature` (was Car Port), `DC (24V) Enabled` / `DC (24V) Temperature` (was DC 24V)
+- Changed: switch names — `AC Enabled`, `DC (12V) Enabled`, `Beeper`, `Prio Solar Charging`, `AC Always On`, `AC Auto On`
+- Changed: number names — `AC Charging Power`, `Screen Brightness`, `Screen Timeout`, `Unit Timeout`, `AC Timeout`, `DC (12V) Timeout`
+- Changed: dashboard fully translated to English
+- Fixed: GitHub token no longer hardcoded in push script — use `$env:GITHUB_TOKEN`
+- Note: only `ac_charging` → `ac_charging_230v` changes the entity ID; all other changes are display names only
+
+### v0.2.7 – Bugfix: ac_charging_speed read SOC% instead of watts
+- Fixed: `ac_charging_speed` (now `AC Charging Power`) was reading `bms_emsStatus.chgRemainTime` (SOC%) instead of `inv.SlowChgWatts` — corrected `state_key` to `KEY_AC_SLOW_CHG_W`
+- Fixed: switch key `ac_charging` renamed to `ac_charging_230v` to match entity ID used in automations
+- Changed: MQTT data log level lowered from WARNING to DEBUG to reduce log spam
+
 ### v0.2.6 – Added example dashboard
 - Added: `examples/dashboard_delta3_1500.yaml` — complete HA dashboard covering all entities (battery, AC, solar, DC, USB, settings, BMS detail, statistics)
 
@@ -249,24 +262,8 @@ logger:
 - Added: energy totals with correct scaling (kWh ×0.001, Wh raw)
 - Added: voltage/current sensors with correct mV→V and mA→A scaling
 
-### v0.0.21
-- Fixed: Time to Full using correct key `bms_emsStatus.chgRemainTime` (was `bms_bmsStatus.chgTime`)
-- Added: coordinator logs all MQTT keys at WARNING level for debugging
-
-### v0.0.20
-- Added Auto-detect connection mode based on serial number prefix
-- Added 12 UI translations: NL, DE, FR, ES, IT, PL, PT, SV, DA, FI, CS, HU
-- Fixed: `KeyError` on setup when using App Login
-
-### v0.0.18
-- Fixed App Login password encoding: **Base64** (confirmed from mmiller7/ecoflow-withoutflow)
-
-### v0.0.16
-- Removed `Host` header from requests session
-- Fixed MQTT ClientID format to `ANDROID_{8digits}_{userId_decimal}`
-
-### v0.0.11
-- Added App Login mode as alternative to Developer API
+### v0.0.11–v0.0.21
+- Early iterations: App Login mode, MQTT ClientID fix, Base64 password encoding, auto-detect connection mode, 12 UI translations (NL/DE/FR/ES/IT/PL/PT/SV/DA/FI/CS/HU), various key and scaling fixes
 
 ### v0.0.1–v0.0.10
 - Initial versions: entity availability, payload parsing, quota/get, signing algorithm
