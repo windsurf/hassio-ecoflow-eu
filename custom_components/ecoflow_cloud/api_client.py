@@ -224,13 +224,13 @@ class EcoFlowPrivateAPI:
     def _make_client_id(self) -> str:
         """
         ClientID format observed from STROMDAO tool:
-          ANDROID_52938471_9876543210123456789
+          ANDROID_520200810_1584935350613467137
           = ANDROID_{8-char random hex/digits}_{userId as decimal string}
 
         The userId is appended as a plain decimal number (not hex-encoded).
         """
         import time as _time
-        # 8-char timestamp-based prefix (matches observed pattern like "52938471")
+        # 8-char timestamp-based prefix (matches observed pattern like "520200810")
         random_part = str(int(_time.time()))[-8:]
         return f"ANDROID_{random_part}_{self._user_id}"
 
