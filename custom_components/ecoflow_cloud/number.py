@@ -23,6 +23,7 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import EcoflowCoordinator
 from .devices.delta3_1500 import (
     DEVICE_MODEL,
+    KEY_AC_SLOW_CHG_W,
     KEY_EMS_MAX_CHG_SOC,
     KEY_EMS_MIN_DSG_SOC,
     KEY_LCD_BRIGHTNESS,
@@ -55,14 +56,14 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
     # ── AC Charging ───────────────────────────────────────────────────────
     EcoFlowNumberDescription(
         key="ac_charging_speed",
-        name="AC Charging Speed",
+        name="AC Charging Power",
         native_unit_of_measurement="W",
         native_min_value=AC_CHG_WATTS_MIN,
         native_max_value=AC_CHG_WATTS_MAX,
         native_step=AC_CHG_WATTS_STEP,
         mode=NumberMode.SLIDER,
         icon="mdi:transmission-tower-import",
-        state_key=KEY_EMS_MAX_CHG_SOC,  # mppt.cfgChgWatts = actual configured charge watts
+        state_key=KEY_AC_SLOW_CHG_W,  # inv.SlowChgWatts = configured AC charge watts
         cmd_module=5,  # MPPT
         cmd_operate="acChgCfg",
         cmd_params_fn=lambda v: {
@@ -140,7 +141,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
     # ── Standby times ─────────────────────────────────────────────────────
     EcoFlowNumberDescription(
         key="standby_time",
-        name="Standby Time",
+        name="Unit Timeout",
         native_unit_of_measurement="min",
         native_min_value=0,
         native_max_value=720,
@@ -154,7 +155,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
     ),
     EcoFlowNumberDescription(
         key="ac_standby_time",
-        name="AC Standby Time",
+        name="AC Timeout",
         native_unit_of_measurement="min",
         native_min_value=0,
         native_max_value=720,
@@ -168,7 +169,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
     ),
     EcoFlowNumberDescription(
         key="car_standby_time",
-        name="Car Port Standby Time",
+        name="DC (12V) Timeout",
         native_unit_of_measurement="min",
         native_min_value=0,
         native_max_value=720,
@@ -184,7 +185,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
     # ── Display ───────────────────────────────────────────────────────────
     EcoFlowNumberDescription(
         key="lcd_brightness",
-        name="LCD Brightness",
+        name="Screen Brightness",
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=0,
         native_max_value=100,
@@ -198,7 +199,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
     ),
     EcoFlowNumberDescription(
         key="lcd_timeout",
-        name="LCD Timeout",
+        name="Screen Timeout",
         native_unit_of_measurement="s",
         native_min_value=0,
         native_max_value=300,
