@@ -176,11 +176,11 @@ MQTT push is the primary data source. REST errors (1006, 8521) are non-fatal —
 
 ## Diagnostic Tool
 
-`test_credentials.py` in the repository root lets you verify credentials from the command line:
+`examples/test_credentials.py` lets you verify credentials from the command line:
 
 ```bash
 pip install requests
-python3 test_credentials.py
+python3 examples/test_credentials.py
 ```
 
 ---
