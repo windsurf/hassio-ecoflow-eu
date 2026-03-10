@@ -58,12 +58,12 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="AC Output",
         icon="mdi:power-socket-eu",
         state_key=KEY_AC_ENABLED,
-        cmd_module=MODULE_INV,
+        cmd_module=MODULE_PD,
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
             "enabled": 1 if on else 0,
             "xboost":  0,
-            "outFreq": 1,    # 1 = 50 Hz
+            "outFreq": 50,   # 50 Hz (Hz literal, not enum)
             "outVol":  230,
         },
     ),
@@ -72,12 +72,12 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="X-Boost",
         icon="mdi:lightning-bolt",
         state_key=KEY_AC_XBOOST,
-        cmd_module=MODULE_INV,
+        cmd_module=MODULE_PD,
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
             "enabled": 255,
             "xboost":  1 if on else 0,
-            "outFreq": 1,    # 1 = 50 Hz
+            "outFreq": 50,   # 50 Hz (Hz literal, not enum)
             "outVol":  230,
         },
     ),
@@ -95,7 +95,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="DC Output",
         icon="mdi:car-electric",
         state_key=KEY_DC_OUT_STATE,
-        cmd_module=MODULE_MPPT,
+        cmd_module=MODULE_PD,
         cmd_operate="dc24vCfg",
         cmd_params=lambda on: {"enabled": 1 if on else 0},
     ),
@@ -111,7 +111,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         inverted=True,
         cmd_module=MODULE_MPPT,
         cmd_operate="acChgCfg",
-        # slowChgWatts/fastChgWatts weggelaten: apparaat negeert 255-placeholders
+        # slowChgWatts/fastChgWatts omitted: device ignores 255-placeholders
         cmd_params=lambda on: {
             "chgPauseFlag": 0 if on else 1,
         },
@@ -173,7 +173,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="Beep Sound",
         icon="mdi:volume-high",
         state_key=KEY_BEEP_MODE,
-        cmd_module=MODULE_PD,
+        cmd_module=MODULE_MPPT,
         cmd_operate="beepCfg",
         cmd_params=lambda on: {"enabled": 1 if on else 0},
     ),
@@ -242,15 +242,16 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             _LOGGER.error("MQTT client unavailable — cannot send switch command")
             return
         cmd = {
-            "id":          str(int(time.time() * 1000)),
-            "version":     "1.0",
+            "id":          int(time.time() * 1000),
+            "version":     "1.1",
             "sn":          self._sn,
             "moduleType":  self.entity_description.cmd_module,
             "operateType": self.entity_description.cmd_operate,
             "params":      self.entity_description.cmd_params(turn_on),
         }
-        _LOGGER.debug("Switch command → %s : %s", topic, cmd)
-        client.publish(topic, json.dumps(cmd), qos=1)
+        _LOGGER.info("EcoFlow: Switch command → %s : %s", topic, cmd)
+        result = client.publish(topic, json.dumps(cmd), qos=0)
+        _LOGGER.debug("EcoFlow: Switch publish result mid=%s rc=%s", result.mid, result.rc)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._publish, True)
