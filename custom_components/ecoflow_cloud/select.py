@@ -1,0 +1,148 @@
+"""Select platform for EcoFlow Cloud."""
+from __future__ import annotations
+
+import json
+import logging
+import time
+from dataclasses import dataclass, field
+from typing import Any
+
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN, MANUFACTURER
+from .coordinator import EcoflowCoordinator
+from .devices.delta3_1500 import (
+    DEVICE_MODEL,
+    KEY_DC_CHG_CURRENT,
+    DC_CHG_CURRENT_OPTIONS,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+# Module type constants (EcoFlow MQTT protocol)
+MODULE_PD   = 1
+MODULE_BMS  = 2
+MODULE_INV  = 3
+MODULE_MPPT = 5
+
+
+@dataclass(frozen=True, kw_only=True)
+class EcoFlowSelectDescription(SelectEntityDescription):
+    """Select description with MQTT command definition."""
+    state_key:   str
+    options_map: dict[str, int]  = field(default_factory=dict)  # label → raw value
+    cmd_module:  int             = 0
+    cmd_operate: str             = ""
+    cmd_param_key: str           = ""
+    entity_registry_enabled_default: bool = True
+
+
+# ── Helper: build symmetric label ↔ value maps ───────────────────────────────
+def _amp_map(ma_values: list[int]) -> dict[str, int]:
+    """Convert list of mA values to {label: raw} dict.  4000 → '4 A'."""
+    return {f"{v // 1000} A": v for v in ma_values}
+
+
+SELECT_DESCRIPTIONS: tuple[EcoFlowSelectDescription, ...] = (
+    # ── DC charging ───────────────────────────────────────────────────────
+    EcoFlowSelectDescription(
+        key="dc_charge_current",
+        name="DC Charge Current",
+        icon="mdi:current-dc",
+        state_key=KEY_DC_CHG_CURRENT,
+        options_map=_amp_map(DC_CHG_CURRENT_OPTIONS),  # {'4 A': 4000, '6 A': 6000, '8 A': 8000}
+        cmd_module=MODULE_MPPT,
+        cmd_operate="dcChgCfg",
+        cmd_param_key="dcChgCurrent",
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up EcoFlow select entities from a config entry."""
+    entry_data  = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry_data["coordinator"]
+    sn          = entry_data["sn"]
+
+    async_add_entities(
+        EcoFlowSelectEntity(coordinator, desc, entry_data, sn)
+        for desc in SELECT_DESCRIPTIONS
+    )
+
+
+class EcoFlowSelectEntity(CoordinatorEntity[EcoflowCoordinator], SelectEntity):
+    """A select entity for an EcoFlow discrete parameter."""
+
+    entity_description: EcoFlowSelectDescription
+
+    def __init__(
+        self,
+        coordinator: EcoflowCoordinator,
+        description: EcoFlowSelectDescription,
+        entry_data: dict,
+        sn: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description  = description
+        self._entry_data         = entry_data
+        self._sn                 = sn
+        self._attr_unique_id     = f"{sn}_{description.key}"
+        self._attr_has_entity_name = True
+        self._attr_device_info   = DeviceInfo(
+            identifiers={(DOMAIN, sn)},
+            name=f"EcoFlow {DEVICE_MODEL}",
+            manufacturer=MANUFACTURER,
+            model=DEVICE_MODEL,
+        )
+        # Build reverse map: raw value → label
+        self._value_to_label: dict[int, str] = {
+            v: k for k, v in description.options_map.items()
+        }
+        self._attr_options = list(description.options_map.keys())
+
+    @property
+    def current_option(self) -> str | None:
+        if not self.coordinator.data:
+            return None
+        raw = self.coordinator.data.get(self.entity_description.state_key)
+        if raw is None:
+            return None
+        return self._value_to_label.get(int(raw))
+
+    @property
+    def available(self) -> bool:
+        return bool(self.coordinator.data)
+
+    def _publish(self, raw_value: int) -> None:
+        client = self._entry_data.get("mqtt_client")
+        topic  = self._entry_data.get("mqtt_topic_set")
+        if not client or not topic:
+            _LOGGER.error("MQTT client unavailable — cannot send select command")
+            return
+        desc = self.entity_description
+        cmd = {
+            "id":          str(int(time.time() * 1000)),
+            "version":     "1.0",
+            "sn":          self._sn,
+            "moduleType":  desc.cmd_module,
+            "operateType": desc.cmd_operate,
+            "params":      {desc.cmd_param_key: raw_value},
+        }
+        _LOGGER.debug("Select command → %s : %s", topic, cmd)
+        client.publish(topic, json.dumps(cmd), qos=1)
+
+    async def async_select_option(self, option: str) -> None:
+        raw = self.entity_description.options_map.get(option)
+        if raw is None:
+            _LOGGER.error("Unknown option '%s' for %s", option, self.entity_description.key)
+            return
+        await self.hass.async_add_executor_job(self._publish, raw)
