@@ -157,7 +157,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
         },
     ),
     EcoFlowNumberDescription(
-        key="min_ac_soc",
+        key="min_soc_for_ac_auto_on",
         name="Min SOC for AC Auto-On",
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=0,
@@ -176,7 +176,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
 
     # ── Standby times ─────────────────────────────────────────────────────
     EcoFlowNumberDescription(
-        key="standby_time",
+        key="device_standby_time",
         name="Device Standby Time",
         native_unit_of_measurement="min",
         native_min_value=0,
@@ -190,7 +190,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
         cmd_param_key="standbyMin",
     ),
     EcoFlowNumberDescription(
-        key="ac_standby_time",
+        key="ac_output_standby_time",
         name="AC Output Standby Time",
         native_unit_of_measurement="min",
         native_min_value=0,
@@ -204,7 +204,7 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
         cmd_param_key="standbyMins",
     ),
     EcoFlowNumberDescription(
-        key="dc12v_standby_time",
+        key="dc_12v_standby_time",
         name="DC 12V Standby Time",
         native_unit_of_measurement="min",
         native_min_value=0,
