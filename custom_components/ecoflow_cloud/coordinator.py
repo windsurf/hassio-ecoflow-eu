@@ -103,7 +103,16 @@ class EcoflowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         param     = payload.get("param")
         data_dict = payload.get("data")
 
-        if type_code and isinstance(params, dict):
+        operate_type = payload.get("operateType", "")
+
+        # Shape F – latestQuotas: full device state in data.quotaMap (pre-dotted keys)
+        #   {operateType: 'latestQuotas', data: {quotaMap: {'pd.acEnabled': 1, ...}}}
+        if operate_type == "latestQuotas" and isinstance(data_dict, dict):
+            quota_map = data_dict.get("quotaMap")
+            if isinstance(quota_map, dict):
+                new_data = {k: v for k, v in quota_map.items() if not isinstance(v, (list, dict))}
+                _LOGGER.info("MQTT latestQuotas: %d keys received", len(new_data))
+        elif type_code and isinstance(params, dict):
             for k, v in params.items():
                 new_data[f"{type_code}.{k}"] = v
         elif type_code and isinstance(data_dict, dict):
