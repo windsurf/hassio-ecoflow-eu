@@ -58,7 +58,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="AC Output",
         icon="mdi:power-socket-eu",
         state_key=KEY_AC_ENABLED,
-        cmd_module=MODULE_PD,           # v0.2.16: MODULE_PD (1) — confirmed working in v0.2.14; MODULE_MPPT (5) caused silent reject (log 11-mrt)
+        cmd_module=MODULE_MPPT,         # v0.2.19: MODULE_MPPT (5) — wildcard trace bevestigd (log 11-mrt avond): APP gebruikt module 5 voor acOutCfg
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
             "enabled":  1 if on else 0,
@@ -72,7 +72,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="X-Boost",
         icon="mdi:lightning-bolt",
         state_key=KEY_AC_XBOOST,
-        cmd_module=MODULE_PD,           # v0.2.16: MODULE_PD (1) — same reasoning as ac_output
+        cmd_module=MODULE_MPPT,         # v0.2.19: MODULE_MPPT (5) — zelfde module als ac_output (acOutCfg altijd via MPPT)
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
             "enabled":  255,
@@ -85,6 +85,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         key="usb_output",
         name="USB Output",
         icon="mdi:usb-port",
+        entity_registry_enabled_default=False,  # v0.2.17: dcOutCfg geeft ack=0 ongeacht stand — risico brede DC-shutdown
         state_key=KEY_USB_OUT_STATE,
         cmd_module=MODULE_PD,
         cmd_operate="dcOutCfg",
@@ -230,7 +231,8 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         if val is None:
             return None
         active = int(val) == 1
-        return (not active) if self.entity_description.inverted else active
+        result = (not active) if self.entity_description.inverted else active
+        return result
 
     @property
     def available(self) -> bool:
@@ -242,17 +244,23 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         if not client or not topic:
             _LOGGER.error("MQTT client unavailable — cannot send switch command")
             return
+        params = self.entity_description.cmd_params(turn_on)
+        # v0.2.20: for acOutCfg always send live xboost value to prevent inconsistent device state
+        if self.entity_description.cmd_operate == "acOutCfg":
+            xboost_val = int(self.coordinator.data.get(KEY_AC_XBOOST, 0))
+            params["xboost"] = xboost_val
+
         cmd = {
-            "id":          int(time.time() * 1000),
+            "id":          int(time.time()),   # v0.2.20: epoch seconden (was epoch ms — 41-bit, te groot voor 32-bit uint)
             "version":     "1.0",
             "sn":          self._sn,
             "moduleType":  self.entity_description.cmd_module,
             "operateType": self.entity_description.cmd_operate,
-            "params":      self.entity_description.cmd_params(turn_on),
+            "params":      params,
         }
         _LOGGER.info("EcoFlow: Switch command -> %s : %s", topic, cmd)
-        result = client.publish(topic, json.dumps(cmd), qos=0)
-        _LOGGER.debug("EcoFlow: Switch publish result mid=%s rc=%s", result.mid, result.rc)
+        result = client.publish(topic, json.dumps(cmd), qos=1)          # v0.2.20: qos=1 — broker garandeert aflevering aan apparaat (was qos=0)
+
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._publish, True)
