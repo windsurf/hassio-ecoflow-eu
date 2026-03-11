@@ -58,13 +58,13 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="AC Output",
         icon="mdi:power-socket-eu",
         state_key=KEY_AC_ENABLED,
-        cmd_module=MODULE_MPPT,
+        cmd_module=MODULE_PD,           # v0.2.16: MODULE_PD (1) — confirmed working in v0.2.14; MODULE_MPPT (5) caused silent reject (log 11-mrt)
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
-            "enabled":     1 if on else 0,
-            "xboost":      255,
-            "out_freq":    255,
-            "out_voltage": -1,
+            "enabled":  1 if on else 0,
+            "xboost":   0,
+            "outFreq":  1,
+            "outVol":   230,
         },
     ),
     EcoFlowSwitchDescription(
@@ -72,13 +72,13 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="X-Boost",
         icon="mdi:lightning-bolt",
         state_key=KEY_AC_XBOOST,
-        cmd_module=MODULE_MPPT,
+        cmd_module=MODULE_PD,           # v0.2.16: MODULE_PD (1) — same reasoning as ac_output
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
-            "enabled":     255,
-            "xboost":      1 if on else 0,
-            "out_freq":    255,
-            "out_voltage": -1,
+            "enabled":  255,
+            "xboost":   1 if on else 0,
+            "outFreq":  1,
+            "outVol":   230,
         },
     ),
     EcoFlowSwitchDescription(
@@ -124,8 +124,8 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         name="Solar Charge Priority",
         icon="mdi:solar-power",
         state_key=KEY_PV_CHG_PRIO,
-        cmd_module=MODULE_MPPT,
-        cmd_operate="pvChangeSet",
+        cmd_module=MODULE_PD,
+        cmd_operate="pvChangePrio",
         cmd_params=lambda on: {"pvChangeSet": 1 if on else 0},
     ),
     EcoFlowSwitchDescription(
@@ -244,13 +244,13 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             return
         cmd = {
             "id":          int(time.time() * 1000),
-            "version":     "1.1",
+            "version":     "1.0",
             "sn":          self._sn,
             "moduleType":  self.entity_description.cmd_module,
             "operateType": self.entity_description.cmd_operate,
             "params":      self.entity_description.cmd_params(turn_on),
         }
-        _LOGGER.info("EcoFlow: Switch command → %s : %s", topic, cmd)
+        _LOGGER.info("EcoFlow: Switch command -> %s : %s", topic, cmd)
         result = client.publish(topic, json.dumps(cmd), qos=0)
         _LOGGER.debug("EcoFlow: Switch publish result mid=%s rc=%s", result.mid, result.rc)
 
