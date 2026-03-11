@@ -79,9 +79,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "api": api, "coordinator": coordinator, "sn": sn,
     }
 
-    # ── MQTT setup ────────────────────────────────────────────────────────
-    mqtt_user = mqtt_info.get("certificateAccount", "")
-    mqtt_pass = mqtt_info.get("certificatePassword", "")
+    # ── MQTT topics ───────────────────────────────────────────────────────
     mqtt_host = mqtt_info.get("url", "mqtt.ecoflow.com")
     mqtt_port = int(mqtt_info.get("port", 8883))
 
@@ -94,32 +92,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         topic_set_reply = f"/app/{user_id}/{sn}/thing/property/set_reply"
         topic_get_reply = f"/app/{user_id}/{sn}/thing/property/get_reply"
     else:
-        topic_sub       = f"/open/{mqtt_user}/{sn}/quota"
-        topic_get       = f"/open/{mqtt_user}/{sn}/quota/get"
-        topic_set       = f"/open/{mqtt_user}/{sn}/set"
+        topic_sub       = f"/open/{mqtt_info.get('certificateAccount', '')}/{sn}/quota"
+        topic_get       = f"/open/{mqtt_info.get('certificateAccount', '')}/{sn}/quota/get"
+        topic_set       = f"/open/{mqtt_info.get('certificateAccount', '')}/{sn}/set"
         topic_set_reply = None
         topic_get_reply = None
 
     _LOGGER.info(
-        "EcoFlow: MQTT host=%s port=%d user=%s topic_sub=%s",
-        mqtt_host, mqtt_port, mqtt_user, topic_sub
+        "EcoFlow: MQTT host=%s port=%d topic_sub=%s",
+        mqtt_host, mqtt_port, topic_sub
     )
 
-    client_id = mqtt_info.get("_client_id") or f"HA-{mqtt_user}-{sn}"[:23]
-    _LOGGER.info("EcoFlow: MQTT client_id=%s", client_id)
+    # ── Client factory ────────────────────────────────────────────────────
+    # v0.2.18: extracted as inner function so recertification can create a
+    # fresh Client with the new client_id returned by the API.
+    # The EcoFlow broker routes set-commands only to the session whose
+    # client_id matches the most recently issued certificate. Reusing an
+    # old client_id after recertification causes silent command drops.
 
-    client = mqtt.Client(
-        client_id=client_id,
-        clean_session=True,
-        protocol=mqtt.MQTTv311,
-    )
-    client.username_pw_set(mqtt_user, mqtt_pass)
-
-    def _configure_tls():
-        client.tls_set(cert_reqs=ssl.CERT_NONE)
-        client.tls_insecure_set(True)
-
-    await hass.async_add_executor_job(_configure_tls)
+    # Track mid→topic per client so on_subscribe logs the correct topic.
+    _subscribe_mid: dict[int, str] = {}
 
     def _request_full_state(c: mqtt.Client) -> None:
         """Send a get-all-properties request to the device."""
@@ -138,13 +130,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     def on_connect(c, userdata, flags, rc):
         if rc == 0:
             _LOGGER.info("EcoFlow: MQTT connected OK for %s", sn)
-            c.subscribe(topic_sub, qos=1)
+            r = c.subscribe(topic_sub, qos=1)
+            _subscribe_mid[r[1]] = topic_sub
             if topic_set_reply:
-                c.subscribe(topic_set_reply, qos=1)
-                _LOGGER.info("EcoFlow: MQTT subscribed to set_reply topic")
+                r = c.subscribe(topic_set_reply, qos=1)
+                _subscribe_mid[r[1]] = topic_set_reply
             if topic_get_reply:
-                c.subscribe(topic_get_reply, qos=1)
-                _LOGGER.info("EcoFlow: MQTT subscribed to get_reply topic")
+                r = c.subscribe(topic_get_reply, qos=1)
+                _subscribe_mid[r[1]] = topic_get_reply
             # Delay 5s: device sends only timing config immediately after connect.
             # Full state dump (58+ keys) returned only after device init cycle completes.
             # Confirmed by log analysis: get-all at t=0 returns only pd.pdInfoFull;
@@ -156,8 +149,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("EcoFlow: MQTT connect FAILED rc=%d for %s", rc, sn)
 
     def on_subscribe(c, userdata, mid, granted_qos):
+        topic = _subscribe_mid.pop(mid, "unknown")
         _LOGGER.info("EcoFlow: MQTT subscribed mid=%d qos=%s topic=%s",
-                        mid, granted_qos, topic_sub)
+                        mid, granted_qos, topic)
 
     def on_disconnect(c, userdata, rc):
         if rc == 0:
@@ -188,18 +182,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             exc, raw_bytes[:200])
             return
 
-        # Log set_reply/get_reply at INFO — show operateType + code for diagnostics
+        # Log set_reply at INFO — flat structure: operateType + code at top level,
+        # data.ack is the device-level result (0=rejected, 1=accepted).
+        # Confirmed by log analysis v0.2.16:
+        #   {'operateType': 'dcOutCfg', 'moduleType': 1, 'code': '0', 'data': {'ack': 0}}
         if topic_set_reply and msg.topic == topic_set_reply:
             try:
                 operate_type = payload.get("operateType", "unknown") if isinstance(payload, dict) else "unknown"
-                _data        = payload.get("data") if isinstance(payload, dict) else None
-                reply_code   = _data.get("ack", {}).get("ackResult", "?") if isinstance(_data, dict) else \
-                               payload.get("code", "?") if isinstance(payload, dict) else "?"
+                http_code    = payload.get("code", "?")   if isinstance(payload, dict) else "?"
+                _data        = payload.get("data")        if isinstance(payload, dict) else None
+                ack          = _data.get("ack", "?")      if isinstance(_data, dict) else "?"
             except Exception:
-                operate_type, reply_code = "parse_error", "?"
+                operate_type, http_code, ack = "parse_error", "?", "?"
             _LOGGER.info(
-                "EcoFlow: set_reply operateType=%s code=%s len=%d",
-                operate_type, reply_code, len(raw_bytes)
+                "EcoFlow: set_reply operateType=%s code=%s ack=%s len=%d",
+                operate_type, http_code, ack, len(raw_bytes)
             )
         elif topic_get_reply and msg.topic == topic_get_reply:
             _LOGGER.info("EcoFlow: MQTT get_reply received (full state ack) len=%d", len(raw_bytes))
@@ -209,23 +206,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     def on_publish(c, userdata, mid):
         _LOGGER.debug("EcoFlow: MQTT publish ACK mid=%d (command delivered to broker)", mid)
 
-    client.on_connect    = on_connect
-    client.on_subscribe  = on_subscribe
-    client.on_disconnect = on_disconnect
-    client.on_message    = on_message
-    client.on_publish    = on_publish
+    def _build_client(cid: str, user: str, passwd: str) -> mqtt.Client:
+        """Create, configure and return a new paho Client.
 
-    # Auto-reconnect: start after 5s, max 60s between attempts
-    client.reconnect_delay_set(min_delay=5, max_delay=60)
+        Called at startup and on every recertification. Using a fresh Client
+        object is required because paho.client_id is immutable after __init__,
+        and the EcoFlow broker routes set-commands only to the session matching
+        the most recently issued client_id.
+        """
+        c = mqtt.Client(
+            client_id=cid,
+            clean_session=True,
+            protocol=mqtt.MQTTv311,
+        )
+        c.username_pw_set(user, passwd)
+        c.tls_set(cert_reqs=ssl.CERT_NONE)
+        c.tls_insecure_set(True)
+        c.on_connect    = on_connect
+        c.on_subscribe  = on_subscribe
+        c.on_disconnect = on_disconnect
+        c.on_message    = on_message
+        c.on_publish    = on_publish
+        c.reconnect_delay_set(min_delay=5, max_delay=60)
+        _LOGGER.info("EcoFlow: MQTT client_id=%s", cid)
+        return c
+
+    # Initial connect
+    init_cid  = mqtt_info.get("_client_id") or f"HA-{mqtt_info.get('certificateAccount','')}-{sn}"[:23]
+    init_user = mqtt_info.get("certificateAccount", "")
+    init_pass = mqtt_info.get("certificatePassword", "")
+
+    # _build_client calls tls_set synchronously — run in executor to avoid
+    # blocking the event loop (tls_set can do file I/O for CA bundles).
+    client = await hass.async_add_executor_job(
+        _build_client, init_cid, init_user, init_pass
+    )
     client.connect_async(mqtt_host, mqtt_port, keepalive=MQTT_KEEPALIVE)
     client.loop_start()
 
+    hass.data[DOMAIN][entry.entry_id].update({
+        "mqtt_client":    client,
+        "mqtt_topic_set": topic_set,
+        "mqtt_user":      init_user,
+    })
+
     # ── Periodic recertification ──────────────────────────────────────────
-    # The EcoFlow cloud routes commands only to the most recently certified
-    # session. If the mobile app logs in after HA, it gets a fresh
-    # certificatePassword and becomes the "active" session — HA commands
-    # are then silently dropped. Recertifying every 10 minutes ensures HA
-    # reclaims command routing after any app login.
+    # v0.2.18: creates a new Client object per cycle so the broker receives
+    # a connection from the correct client_id that was just issued.
+    # Previous approach (client.reconnect() with old client_id) caused the
+    # broker to ignore all set-commands after the first recertification cycle.
     RECERT_INTERVAL = 600  # seconds
 
     async def _recertify_loop():
@@ -238,31 +267,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.warning("EcoFlow: recertification failed (will retry): %s", exc)
                 continue
 
+            new_cid  = new_info.get("_client_id", "")
+            new_user = new_info.get("certificateAccount", "")
             new_pass = new_info.get("certificatePassword", "")
-            new_cid  = new_info.get("_client_id", client_id)
+
             if not new_pass:
-                _LOGGER.warning("EcoFlow: recertification returned empty password")
+                _LOGGER.warning("EcoFlow: recertification returned empty password — skipping")
+                continue
+            if not new_cid:
+                _LOGGER.warning("EcoFlow: recertification returned empty client_id — skipping")
                 continue
 
-            _LOGGER.info("EcoFlow: recertification OK — reconnecting with fresh credentials")
-            # Disconnect and reconnect with new credentials
-            # paho does not support in-place credential update, so we disconnect
-            # and let loop_start + reconnect_delay handle reconnection.
-            # We update username/password before disconnect so on_connect uses them.
-            client.username_pw_set(new_info.get("certificateAccount", mqtt_user), new_pass)
+            _LOGGER.info(
+                "EcoFlow: recertification OK — new client_id=%s, building new MQTT client",
+                new_cid
+            )
+
             try:
-                client.reconnect()
-            except Exception:
-                client.disconnect()
-            _LOGGER.info("EcoFlow: reconnect with fresh credentials triggered")
+                new_client = await hass.async_add_executor_job(
+                    _build_client, new_cid, new_user, new_pass
+                )
+            except Exception as exc:
+                _LOGGER.warning("EcoFlow: failed to build new MQTT client: %s — keeping old", exc)
+                continue
+
+            # Stop old client before starting new one
+            old_client = hass.data[DOMAIN][entry.entry_id].get("mqtt_client")
+            if old_client:
+                try:
+                    old_client.loop_stop()
+                    old_client.disconnect()
+                except Exception as exc:
+                    _LOGGER.debug("EcoFlow: error stopping old client (non-fatal): %s", exc)
+
+            # Atomic update — switch.py and number.py read this reference on every publish
+            new_client.connect_async(mqtt_host, mqtt_port, keepalive=MQTT_KEEPALIVE)
+            new_client.loop_start()
+            hass.data[DOMAIN][entry.entry_id]["mqtt_client"] = new_client
+            _LOGGER.info("EcoFlow: new MQTT client active (client_id=%s)", new_cid)
 
     hass.loop.create_task(_recertify_loop())
-
-    hass.data[DOMAIN][entry.entry_id].update({
-        "mqtt_client":    client,
-        "mqtt_topic_set": topic_set,
-        "mqtt_user":      mqtt_user,
-    })
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
