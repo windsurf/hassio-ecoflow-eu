@@ -74,9 +74,8 @@ NUMBER_DESCRIPTIONS: tuple[EcoFlowNumberDescription, ...] = (
         cmd_module=MODULE_MPPT,
         cmd_operate="acChgCfg",
         cmd_params_fn=lambda v: {
-            "slowChgWatts": int(v),
-            "fastChgWatts": int(v),
-            "chgPauseFlag": 0,
+            "chgWatts":     int(v),
+            "chgPauseFlag": 255,  # 255 = keep current pause state unchanged
         },
     ),
 
