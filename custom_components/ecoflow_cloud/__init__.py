@@ -174,24 +174,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "EcoFlow: MQTT message topic=%s len=%d",
             msg.topic, len(raw_bytes)
         )
-        # Log set_reply/get_reply at INFO so command acknowledgement is visible
-        if topic_set_reply and msg.topic == topic_set_reply:
-            _LOGGER.info("EcoFlow: MQTT set_reply received (device ack) len=%d", len(raw_bytes))
-        elif topic_get_reply and msg.topic == topic_get_reply:
-            _LOGGER.info("EcoFlow: MQTT get_reply received (full state ack) len=%d", len(raw_bytes))
-
         try:
             raw = raw_bytes.decode("utf-8")
             payload = json.loads(raw)
-            hass.loop.call_soon_threadsafe(coordinator.update_from_mqtt, payload)
         except UnicodeDecodeError:
             _LOGGER.warning(
                 "EcoFlow: MQTT payload is binary (protobuf?) — hex: %s",
                 raw_bytes[:64].hex()
             )
+            return
         except json.JSONDecodeError as exc:
             _LOGGER.warning("EcoFlow: MQTT JSON parse error: %s — raw: %s",
                             exc, raw_bytes[:200])
+            return
+
+        # Log set_reply/get_reply at INFO — show operateType + code for diagnostics
+        if topic_set_reply and msg.topic == topic_set_reply:
+            try:
+                operate_type = payload.get("operateType", "unknown") if isinstance(payload, dict) else "unknown"
+                _data        = payload.get("data") if isinstance(payload, dict) else None
+                reply_code   = _data.get("ack", {}).get("ackResult", "?") if isinstance(_data, dict) else \
+                               payload.get("code", "?") if isinstance(payload, dict) else "?"
+            except Exception:
+                operate_type, reply_code = "parse_error", "?"
+            _LOGGER.info(
+                "EcoFlow: set_reply operateType=%s code=%s len=%d",
+                operate_type, reply_code, len(raw_bytes)
+            )
+        elif topic_get_reply and msg.topic == topic_get_reply:
+            _LOGGER.info("EcoFlow: MQTT get_reply received (full state ack) len=%d", len(raw_bytes))
+
+        hass.loop.call_soon_threadsafe(coordinator.update_from_mqtt, payload)
 
     def on_publish(c, userdata, mid):
         _LOGGER.debug("EcoFlow: MQTT publish ACK mid=%d (command delivered to broker)", mid)
