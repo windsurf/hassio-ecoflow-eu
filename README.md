@@ -215,6 +215,25 @@ logger:
 
 ## Changelog
 
+### v0.2.17 – Fix: moduleType acOutCfg + id overflow + qos + usb_output disabled + client_id recertification
+
+- Fixed: `ac_output` and `x_boost` — `cmd_module` corrected from `MODULE_PD` (1) to `MODULE_MPPT` (5); confirmed via wildcard MQTT trace of APP commands
+- Fixed: `KEY_AC_ENABLED` state key corrected from `mppt.cfgAcEnabled` to `pd.acEnabled` (live state, not config register)
+- Fixed: command `id` field changed from epoch milliseconds (41-bit, overflow) to epoch seconds (31-bit, fits 32-bit uint)
+- Fixed: `usb_output` switch disabled by default (`entity_registry_enabled_default=False`); `dcOutCfg` returns `ack=0` regardless of state — risk of unintended DC shutdown
+- Fixed: MQTT `client_id` on recertification — `_build_client()` factory creates new `mqtt.Client` object; paho does not allow `client_id` mutation after `__init__()`
+- Fixed: `set_reply` parser — payload has flat structure; `operateType`/`code` on root level, not nested under `data`
+- Fixed: `on_subscribe` logging — `_subscribe_mid` tracked as `dict[int, str]` per call; eliminates race condition on mid matching
+- Improved: `acOutCfg` always sends live `xboost` value from coordinator to prevent inconsistent state
+- Improved: command publish changed to `qos=1`; broker guarantees delivery acknowledgement
+- Improved: `number.py` command `id` also corrected from epoch ms to epoch seconds
+--
+### v0.2.17 – Fix: set_reply parser + KEY_DC_OUT_STATE + usb_output disabled
+
+- Fixed: set_reply handler las `params`-key uit device-reply, maar EcoFlow gebruikt `data`-key — `operateType` en `ack` werden nooit correct gelogd (`parse_error`). Handler leest nu `data.ack` correct: `ACCEPTED` (1) of `REJECTED` (0).
+- Fixed: `KEY_DC_OUT_STATE` corrected from `pd.carState` to `mppt.dc24vState` — confirmed via latestQuotas dump and incremental MPPT update after toggle (log 11-mar).
+- Changed: `usb_output` switch disabled by default (`entity_registry_enabled_default=False`) — `dcOutCfg` returns `ack=0` on all attempts; correct command unknown (hypotheses H1/H2/H3 open).
+
 ### v0.2.16 – Fix: version 1.0 + pvChangePrio + KEY_AC_ENABLED + set_reply diagnostics
 
 - Fixed: `version` field in all set commands changed from `"1.1"` to `"1.0"` (matches device protocol for set operations)
