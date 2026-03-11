@@ -60,7 +60,7 @@ KEY_INFO_ACCU_DSG_E = "bms_bmsInfo.accuDsgEnergy"      # Cumul. discharge energy
 KEY_INFO_ROUND_TRIP = "bms_bmsInfo.roundTrip"          # Round-trip efficiency     (%)
 KEY_INFO_SELF_DSG   = "bms_bmsInfo.selfDsgRate"        # Self-discharge rate       (%/day)
 KEY_INFO_DEEP_DSG   = "bms_bmsInfo.deepDsgCnt"         # Deep discharge count
-KEY_INFO_OHM_RES    = "bms_bmsInfo.ohmRes"             # Internal resistance       (mΩ)
+KEY_INFO_OHM_RES    = "bms_bmsInfo.ohmRes"             # Internal resistance       (mOhm)
 
 # ── AC Inverter ───────────────────────────────────────────────────────────────
 KEY_AC_OUT_W        = "inv.outputWatts"                # AC output power           (W)
@@ -71,19 +71,19 @@ KEY_AC_IN_FREQ      = "inv.acInFreq"                   # AC input frequency     
 KEY_AC_OUT_VOLT     = "inv.invOutVol"                  # AC output voltage         (mV)
 KEY_AC_OUT_AMP      = "inv.invOutAmp"                  # AC output current         (mA)
 KEY_AC_OUT_FREQ_RT  = "inv.invOutFreq"                 # AC output freq (actual)   (Hz)
-KEY_AC_ENABLED      = "pd.acEnabled"                   # AC output on/off          (0/1) — pd authoritative (confirmed by app MQTT trace)
-KEY_AC_XBOOST       = "mppt.cfgAcXboost"               # X-Boost on/off            (0/1) — mppt structural
+KEY_AC_ENABLED      = "mppt.cfgAcEnabled"               # AC output on/off          (0/1) -- tolwi reference; pd.acEnabled did not reflect toggle reliably
+KEY_AC_XBOOST       = "mppt.cfgAcXboost"               # X-Boost on/off            (0/1) -- mppt structural
 KEY_AC_CFG_FREQ     = "inv.cfgAcOutFreq"               # Configured AC freq        (Hz)
 KEY_AC_CFG_VOLT     = "inv.cfgAcOutVol"                # Configured AC voltage     (V)
 KEY_AC_FAST_CHG_W   = "inv.FastChgWatts"               # AC fast charge limit      (W)
 KEY_AC_SLOW_CHG_W   = "inv.SlowChgWatts"               # AC slow charge limit      (W)
-KEY_AC_CHG_PAUSE    = "mppt.chgPauseFlag"              # AC charging paused        (0/1) — mppt structural
+KEY_AC_CHG_PAUSE    = "mppt.chgPauseFlag"              # AC charging paused        (0/1) -- mppt structural
 KEY_AC_FAN_STATE    = "inv.fanState"                   # Inverter fan on           (0/1)
 KEY_AC_TEMP         = "inv.outTemp"                    # Inverter temperature      (°C)
 KEY_DC_IN_VOLT      = "inv.dcInVol"                    # DC input voltage          (mV)
 KEY_DC_IN_AMP       = "inv.dcInAmp"                    # DC input current          (mA)
 KEY_DC_IN_TEMP      = "inv.dcInTemp"                   # DC input temperature      (°C)
-KEY_AC_STANDBY_TIME = "mppt.acStandbyMins"             # AC standby time           (min) — mppt structural
+KEY_AC_STANDBY_TIME = "mppt.acStandbyMins"             # AC standby time           (min) -- mppt structural
 
 # Delta 3 1500 AC charging limits (different from Delta 2 which is max 1200W)
 AC_CHG_WATTS_MIN    = 200
@@ -100,10 +100,9 @@ KEY_MPPT_CFG_CHG_W  = "mppt.cfgChgWatts"               # Configured AC charge li
 KEY_DC12V_OUT_W     = "mppt.carOutWatts"               # DC 12V output power       (W)
 KEY_DC12V_OUT_VOLT  = "mppt.carOutVol"                 # DC 12V voltage            (mV)
 KEY_DC12V_OUT_AMP   = "mppt.carOutAmp"                 # DC 12V current            (mA)
-# KEY_DC12V_STATE removed in v0.2.12: mppt.carState switch not implemented (read-only sensor sufficient)
 KEY_DC12V_TEMP      = "mppt.carTemp"                   # DC 12V temperature        (°C)
 KEY_DC12V_STANDBY   = "mppt.carStandbyMin"             # DC 12V standby time       (min)
-KEY_DC_OUT_STATE    = "pd.carState"                    # DC output on/off          (0/1) — pd authoritative (confirmed by app MQTT trace)
+KEY_DC_OUT_STATE    = "pd.carState"                    # DC output on/off          (0/1) -- pd authoritative (confirmed by app MQTT trace)
 KEY_DC_OUT_TEMP     = "mppt.dc24vTemp"                 # DC output temperature     (°C)
 KEY_DC_CHG_CURRENT  = "mppt.dcChgCurrent"              # DC charge current cfg     (mA)
 KEY_DCDC12V_W       = "mppt.dcdc12vWatts"              # DC-DC 12V power           (W)
@@ -132,15 +131,15 @@ KEY_USB_OUT_STATE   = "pd.dcOutState"                  # USB output on/off      
 KEY_LCD_BRIGHTNESS  = "pd.brightLevel"                 # LCD brightness            (0-3)
 KEY_LCD_TIMEOUT     = "pd.lcdOffSec"                   # LCD timeout               (s)
 KEY_STANDBY_TIME    = "pd.standbyMin"                  # Device standby time       (min)
-KEY_BEEP_MODE       = "mppt.beepState"                 # Beep on/off               (0/1) — mppt authoritative (confirmed by app MQTT trace)
+KEY_BEEP_MODE       = "mppt.beepState"                 # Beep on/off               (0/1) -- mppt authoritative (confirmed by app MQTT trace)
 KEY_WIFI_RSSI       = "pd.wifiRssi"                    # WiFi signal strength      (dBm)
 KEY_CHG_DSG_STATE   = "pd.chgDsgState"                 # Charge/discharge state
 KEY_CHG_SUN_POWER   = "pd.chgSunPower"                 # Solar charge power        (W)
-KEY_CHG_POWER_AC    = "pd.chgPowerAC"                  # Cumul. AC charged         (×0.001 kWh)
-KEY_CHG_POWER_DC    = "pd.chgPowerDC"                  # Cumul. DC charged         (×0.001 kWh)
-KEY_DSG_POWER_AC    = "pd.dsgPowerAC"                  # Cumul. AC discharged      (×0.1 W)
-KEY_DSG_POWER_DC    = "pd.dsgPowerDC"                  # Cumul. DC discharged      (×0.1 W)
-KEY_AC_AUTO_ON      = "pd.watchIsConfig"               # Memory AC outputs on/off  (0/1) — confirmed by app MQTT trace (was pd.acAutoOnCfg)
+KEY_CHG_POWER_AC    = "pd.chgPowerAC"                  # Cumul. AC charged         (x0.001 kWh)
+KEY_CHG_POWER_DC    = "pd.chgPowerDC"                  # Cumul. DC charged         (x0.001 kWh)
+KEY_DSG_POWER_AC    = "pd.dsgPowerAC"                  # Cumul. AC discharged      (x0.1 W)
+KEY_DSG_POWER_DC    = "pd.dsgPowerDC"                  # Cumul. DC discharged      (x0.1 W)
+KEY_AC_AUTO_ON      = "pd.watchIsConfig"               # Memory AC outputs on/off  (0/1) -- confirmed by app MQTT trace (was pd.acAutoOnCfg)
 KEY_AC_AUTO_OUT     = "pd.acAutoOutConfig"             # AC always-on enabled      (0/1)
 KEY_AC_BYPASS_PAUSE = "pd.acAutoOutPause"              # Bypass paused             (0=active, 1=paused)
 KEY_MIN_AC_SOC      = "pd.minAcoutSoc"                 # Min SOC for AC auto-on    (%)
