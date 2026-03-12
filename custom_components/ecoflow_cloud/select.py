@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,6 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import EcoflowCoordinator
+from . import _next_id
 from .devices.delta3_1500 import (
     DEVICE_MODEL,
     KEY_DC_CHG_CURRENT,
@@ -130,7 +130,7 @@ class EcoFlowSelectEntity(CoordinatorEntity[EcoflowCoordinator], SelectEntity):
             return
         desc = self.entity_description
         cmd = {
-            "id":          int(time.time() * 1000),
+            "id":          _next_id(),
             "version":     "1.1",
             "sn":          self._sn,
             "moduleType":  desc.cmd_module,
