@@ -1,12 +1,16 @@
 {
   "domain": "ecoflow_cloud",
   "name": "EcoFlow Cloud (EU Delta 3)",
-  "version": "0.2.19",
-  "documentation": "https://github.com/windsurf/hassio-ecoflow-eu-delta3",
-  "issue_tracker": "https://github.com/windsurf/hassio-ecoflow-eu-delta3/issues",
-  "requirements": ["paho-mqtt>=1.6.1"],
+  "codeowners": [
+    "@windsurf"
+  ],
+  "config_flow": true,
   "dependencies": [],
-  "codeowners": ["@windsurf"],
+  "documentation": "https://github.com/windsurf/hassio-ecoflow-eu-delta3",
   "iot_class": "cloud_push",
-  "config_flow": true
+  "issue_tracker": "https://github.com/windsurf/hassio-ecoflow-eu-delta3/issues",
+  "requirements": [
+    "paho-mqtt>=1.6.1"
+  ],
+  "version": "0.2.20"
 }
