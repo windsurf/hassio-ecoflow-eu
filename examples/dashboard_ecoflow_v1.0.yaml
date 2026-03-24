@@ -8,7 +8,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: Batterij
+        heading: Battery
       - type: gauge
         entity: sensor.ecoflow_delta_3_1500_battery_level
         name:
@@ -57,7 +57,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: Vermogen
+        heading: Power
       - type: gauge
         entity: sensor.ecoflow_delta_3_1500_total_input_power
         name:
@@ -84,7 +84,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: AC Uitgang
+        heading: AC Output
       - type: tile
         entity: switch.ecoflow_delta_3_1500_ac_output
         name:
@@ -124,7 +124,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: AC Ingang
+        heading: AC Input
       - type: tile
         entity: switch.ecoflow_delta_3_1500_ac_charging
         name:
@@ -160,7 +160,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: Zonne-energie
+        heading: Solar
       - type: gauge
         entity: sensor.ecoflow_delta_3_1500_solar_input_power
         name:
@@ -200,7 +200,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: DC Uitgangen
+        heading: DC Outputs
       - type: tile
         entity: sensor.ecoflow_delta_3_1500_dc_12v_output_power
         name:
@@ -231,7 +231,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: USB Uitgangen
+        heading: USB Outputs
       - type: tile
         entity: sensor.ecoflow_delta_3_1500_usb_a_1_power
         name:
@@ -274,7 +274,7 @@ sections:
     column_span: 1
     cards:
       - type: heading
-        heading: Instellingen
+        heading: Settings
       - type: tile
         entity: number.ecoflow_delta_3_1500_max_charge_level
         name:
@@ -353,7 +353,7 @@ sections:
     column_span: 2
     cards:
       - type: heading
-        heading: Batterij detail
+        heading: Battery Detail
       - type: tile
         entity: sensor.ecoflow_delta_3_1500_battery_voltage
         name:
@@ -458,7 +458,7 @@ sections:
     column_span: 2
     cards:
       - type: heading
-        heading: Statistieken
+        heading: Statistics
       - type: tile
         entity: sensor.ecoflow_delta_3_1500_cumulative_ac_charged
         name:
