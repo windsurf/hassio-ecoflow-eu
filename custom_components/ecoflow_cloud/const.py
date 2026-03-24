@@ -1,7 +1,7 @@
 """Constants for EcoFlow Cloud integration."""
 
 DOMAIN              = "ecoflow_cloud"
-INTEGRATION_VERSION = "0.2.20"
+INTEGRATION_VERSION = "0.2.21"
 
 # Config entry keys
 CONF_ACCESS_KEY = "access_key"
@@ -11,6 +11,11 @@ CONF_API_HOST   = "api_host"
 CONF_AUTH_MODE  = "auth_mode"
 CONF_EMAIL      = "email"
 CONF_PASSWORD   = "password"
+
+# Developer API keys (optional, for hybrid mode REST SET)
+CONF_DEV_ACCESS_KEY = "dev_access_key"
+CONF_DEV_SECRET_KEY = "dev_secret_key"
+CONF_DEV_API_HOST   = "dev_api_host"
 
 # Auth modes
 AUTH_MODE_PUBLIC  = "public"   # Open API: Access Key + Secret Key
