@@ -14,6 +14,7 @@ from .const import (
     DOMAIN, INTEGRATION_VERSION,
     CONF_ACCESS_KEY, CONF_SECRET_KEY, CONF_DEVICE_SN, CONF_API_HOST,
     CONF_AUTH_MODE, CONF_EMAIL, CONF_PASSWORD,
+    CONF_DEV_ACCESS_KEY, CONF_DEV_SECRET_KEY, CONF_DEV_API_HOST,
     AUTH_MODE_PUBLIC, AUTH_MODE_PRIVATE, AUTH_MODE_AUTO,
     API_HOST_EU, API_HOST_US, API_HOST_GLOBAL,
     PRIVATE_API_SN_PREFIXES,
@@ -145,7 +146,7 @@ class EcoFlowCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_EMAIL:    user_input[CONF_EMAIL].strip(),
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
             })
-            return await self.async_step_test()
+            return await self.async_step_developer_creds()
 
         return self.async_show_form(
             step_id="private_creds",
@@ -156,6 +157,33 @@ class EcoFlowCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "version": INTEGRATION_VERSION,
                 "hint": "Use your EcoFlow app email and password. Recommended for Delta 3.",
+            },
+        )
+
+    async def async_step_developer_creds(self, user_input=None) -> ConfigFlowResult:
+        """Optional: Developer API credentials for REST SET commands (hybrid mode)."""
+        if user_input is not None:
+            ak = user_input.get(CONF_DEV_ACCESS_KEY, "").strip()
+            sk = user_input.get(CONF_DEV_SECRET_KEY, "").strip()
+            if ak and sk:
+                self._data[CONF_DEV_ACCESS_KEY] = ak
+                self._data[CONF_DEV_SECRET_KEY] = sk
+                self._data[CONF_DEV_API_HOST]   = API_HOST_EU
+            return await self.async_step_test()
+
+        return self.async_show_form(
+            step_id="developer_creds",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_DEV_ACCESS_KEY, default=""): cv.string,
+                vol.Optional(CONF_DEV_SECRET_KEY, default=""): cv.string,
+            }),
+            description_placeholders={
+                "version": INTEGRATION_VERSION,
+                "hint": (
+                    "Optional: Add Developer API keys to enable switch/number control "
+                    "via REST API. Get keys at developer-eu.ecoflow.com. "
+                    "Leave empty to skip (MQTT-only mode)."
+                ),
             },
         )
 
@@ -247,6 +275,10 @@ class EcoFlowOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(CONF_EMAIL,    default=current.get(CONF_EMAIL, "")): cv.string,
                 vol.Required(CONF_PASSWORD, default=""): cv.string,
                 vol.Required(CONF_DEVICE_SN, default=current.get(CONF_DEVICE_SN, "")): cv.string,
+                # Developer API (optional, for hybrid mode)
+                vol.Optional(CONF_DEV_ACCESS_KEY,
+                             default=current.get(CONF_DEV_ACCESS_KEY, "")): cv.string,
+                vol.Optional(CONF_DEV_SECRET_KEY, default=""): cv.string,
             })
         else:
             schema = vol.Schema({
@@ -260,6 +292,10 @@ class EcoFlowOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             new_data = {**current, **{k: v.strip() if isinstance(v, str) else v
                                       for k, v in user_input.items()}}
+            # If dev secret key is empty but access key exists, keep old secret
+            if (new_data.get(CONF_DEV_ACCESS_KEY)
+                    and not new_data.get(CONF_DEV_SECRET_KEY)):
+                new_data[CONF_DEV_SECRET_KEY] = current.get(CONF_DEV_SECRET_KEY, "")
             self.hass.config_entries.async_update_entry(self._entry, data=new_data)
             return self.async_create_entry(title="", data={})
 
