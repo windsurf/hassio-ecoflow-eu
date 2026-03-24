@@ -252,49 +252,62 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         return bool(self.coordinator.data)
 
     def _publish(self, turn_on: bool) -> None:
+        desc   = self.entity_description
+
+        # ── Priority 1: REST API SET (Developer API) ─────────────────────
+        # Confirmed working for Delta 3 (H-H, 19 March 2026).
+        # Reliable, documented, uses HMAC-signed HTTP PUT.
+        rest_api = self._entry_data.get("rest_api")
+        if rest_api is not None and desc.cmd_operate:
+            params = desc.cmd_params(turn_on) if desc.cmd_params else {}
+            # acOutCfg: always include live xboost value
+            if desc.cmd_operate == "acOutCfg":
+                xboost_val = int((self.coordinator.data or {}).get(KEY_AC_XBOOST, 0))
+                params["xboost"] = xboost_val
+            try:
+                rest_api.set_quota(desc.cmd_module, desc.cmd_operate, params)
+                _LOGGER.info(
+                    "EcoFlow: REST SET %s turn_on=%s module=%d operate=%s params=%s",
+                    desc.key, turn_on, desc.cmd_module, desc.cmd_operate, params,
+                )
+                return
+            except Exception as exc:
+                _LOGGER.warning(
+                    "EcoFlow: REST SET %s failed (%s) — falling back to MQTT",
+                    desc.key, exc,
+                )
+
+        # ── Priority 2: Protobuf MQTT SET ────────────────────────────────
+        # Delta 3 (D361) requires protobuf on MQTT /set topic (H-G confirmed).
+        # Used as fallback when REST API is unavailable.
         client = self._entry_data.get("mqtt_client")
         topic  = self._entry_data.get("mqtt_topic_set")
-        desc   = self.entity_description
 
         if not client or not topic:
             _LOGGER.error(
-                "EcoFlow: MQTT client unavailable — cannot send %s command",
+                "EcoFlow: no MQTT client and no REST API — cannot send %s command",
                 desc.key,
             )
             return
 
-        # ── v0.2.19: proto_builder takes priority over JSON ──────────────
-        # Delta 3 (D361) only accepts protobuf set-commands.
-        # Switches without proto_builder fall back to JSON (experimental).
         if desc.proto_builder is not None:
             proto_payload = desc.proto_builder(turn_on)
             _LOGGER.info(
                 "EcoFlow: proto SET %s turn_on=%s topic=%s hex=%s",
                 desc.key, turn_on, topic, proto_payload.hex(),
             )
-            _LOGGER.debug(
-                "EcoFlow: proto SET detail key=%s operate=%s module=%d "
-                "builder=%s payload_len=%d",
-                desc.key, desc.cmd_operate, desc.cmd_module,
-                desc.proto_builder.__name__, len(proto_payload),
-            )
             result = client.publish(topic, proto_payload, qos=1)
             _LOGGER.debug(
-                "EcoFlow: proto publish mid=%s rc=%s",
-                result.mid, result.rc,
+                "EcoFlow: proto publish mid=%s rc=%s", result.mid, result.rc,
             )
             return
 
-        # ── JSON fallback (no proto_builder) ─────────────────────────────
+        # ── Priority 3: JSON MQTT SET (legacy, ignored by Delta 3) ───────
         params = desc.cmd_params(turn_on) if desc.cmd_params else {}
 
-        # acOutCfg: always include live xboost value
         if desc.cmd_operate == "acOutCfg":
             xboost_val = int((self.coordinator.data or {}).get(KEY_AC_XBOOST, 0))
             params["xboost"] = xboost_val
-            _LOGGER.debug(
-                "EcoFlow: acOutCfg xboost live waarde=%d meegestuurd", xboost_val,
-            )
 
         cmd = {
             "id":          _next_id(),
@@ -305,18 +318,12 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             "params":      params,
         }
         _LOGGER.info(
-            "EcoFlow: JSON SET %s turn_on=%s topic=%s cmd=%s",
-            desc.key, turn_on, topic, cmd,
-        )
-        _LOGGER.debug(
-            "EcoFlow: JSON SET detail key=%s operate=%s module=%d "
-            "params=%s (no proto_builder — may be ignored by device)",
-            desc.key, desc.cmd_operate, desc.cmd_module, params,
+            "EcoFlow: JSON SET %s turn_on=%s (no REST, no proto — may be ignored)",
+            desc.key, turn_on,
         )
         result = client.publish(topic, json.dumps(cmd), qos=1)
         _LOGGER.debug(
-            "EcoFlow: JSON publish mid=%s rc=%s",
-            result.mid, result.rc,
+            "EcoFlow: JSON publish mid=%s rc=%s", result.mid, result.rc,
         )
 
 
