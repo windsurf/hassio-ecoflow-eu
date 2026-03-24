@@ -194,7 +194,7 @@ def build_charge_target(soc: int) -> bytes:
 # ---------------------------------------------------------------------------
 
 def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
-    """Lees varint op positie pos. Geeft (waarde, nieuwe_pos) terug."""
+    """Read varint at position pos. Returns (value, new_pos)."""
     result = 0
     shift = 0
     while pos < len(data):
@@ -240,9 +240,9 @@ def dump_fields(data: bytes, depth: int = 0, max_depth: int = 3) -> str:
                 else:
                     lines.append(f"{indent}f{field_num}(LEN {length:4d}): {hex_str}")
             else:
-                lines.append(f"{indent}  <wire_type {wire_type} onbekend, stop>")
+                lines.append(f"{indent}  <wire_type {wire_type} unknown, stop>")
                 break
     except Exception as exc:
-        lines.append(f"{indent}  <parse fout: {exc}>")
+        lines.append(f"{indent}  <parse error: {exc}>")
     return "\n".join(lines)
 
