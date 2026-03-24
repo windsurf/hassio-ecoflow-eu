@@ -29,6 +29,18 @@
           "password": "EcoFlow Account Password"
         }
       },
+      "developer_creds": {
+        "title": "EcoFlow Cloud – Developer API (Optional)",
+        "description": "{hint}",
+        "data": {
+          "dev_access_key": "Developer Access Key (optional)",
+          "dev_secret_key": "Developer Secret Key (optional)"
+        },
+        "data_description": {
+          "dev_access_key": "Enables switch and number control via REST API. Leave empty to skip.",
+          "dev_secret_key": "Required if Access Key is provided."
+        }
+      },
       "test": {
         "title": "EcoFlow Cloud – Connection Test",
         "description": "{eu}\n{us}\n{glob}\n\n{hint}"
@@ -53,7 +65,9 @@
           "email":      "EcoFlow Account Email",
           "password":   "EcoFlow Account Password",
           "device_sn":  "Device Serial Number",
-          "api_host":   "API Server"
+          "api_host":   "API Server",
+          "dev_access_key": "Developer Access Key (optional, for REST control)",
+          "dev_secret_key": "Developer Secret Key"
         }
       }
     },
