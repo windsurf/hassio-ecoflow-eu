@@ -29,6 +29,18 @@
           "password": "EcoFlow accountwachtwoord"
         }
       },
+      "developer_creds": {
+        "title": "EcoFlow Cloud – Developer API (Optioneel)",
+        "description": "{hint}",
+        "data": {
+          "dev_access_key": "Developer Access Key (optioneel)",
+          "dev_secret_key": "Developer Secret Key (optioneel)"
+        },
+        "data_description": {
+          "dev_access_key": "Schakelt bediening via REST API in voor schakelaars en instellingen. Laat leeg om over te slaan.",
+          "dev_secret_key": "Vereist als Access Key is ingevuld."
+        }
+      },
       "test": {
         "title": "EcoFlow Cloud – Verbindingstest",
         "description": "{eu}\n{us}\n{glob}\n\n{hint}"
@@ -53,7 +65,9 @@
           "email":      "EcoFlow account e-mailadres",
           "password":   "EcoFlow accountwachtwoord",
           "device_sn":  "Serienummer apparaat",
-          "api_host":   "API-server"
+          "api_host":   "API-server",
+          "dev_access_key": "Developer Access Key (optioneel, voor REST bediening)",
+          "dev_secret_key": "Developer Secret Key"
         }
       }
     },
