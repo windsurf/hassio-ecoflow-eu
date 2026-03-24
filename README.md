@@ -6,9 +6,13 @@
 
 > **Disclaimer:** This software is not affiliated with or endorsed by EcoFlow in any way. It is provided "as-is" without warranty or support, for the educational use of developers and enthusiasts. Use at your own risk.
 
-Real-time monitoring and control of EcoFlow power stations via MQTT. Supports the **EcoFlow Developer API** (Access Key + Secret Key) and **App Login** (email + password) — the latter is required for Delta 3 and other newer devices not supported by the official Open API.
+Real-time monitoring and control of EcoFlow power stations via MQTT. Supports three connection modes:
 
-> **Actively tested with:** EcoFlow Delta 3 1500 (`D361` series, App Login mode)
+- **App Login** (email + password) — MQTT telemetry for all devices including Delta 3
+- **Developer API** (Access Key + Secret Key) — REST API for device list, credentials, and SET commands
+- **Hybrid Mode** (recommended for Delta 3) — App Login for real-time MQTT data + Developer API for reliable REST control
+
+> **Actively tested with:** EcoFlow Delta 3 1500 (`D361` series, Hybrid Mode)
 
 ---
 
@@ -49,9 +53,23 @@ Select **Auto-detect** (recommended) — Delta 3, newer PowerStream and other re
 
 **Step 2:** Enter credentials for the chosen method.
 
-**Step 3:** Automatic connection test — confirms login and shows which devices are on your account.
+**Step 3 (App Login only):** Optionally enter Developer API keys to enable **Hybrid Mode**. This adds REST API control for switches and number entities — recommended for Delta 3 devices where MQTT commands are ignored. Leave empty to skip (MQTT-only mode, protobuf fallback).
 
-After setup, use the **gear icon** on the integration card to change credentials or switch API mode.
+**Step 4:** Automatic connection test — confirms login and shows which devices are on your account.
+
+After setup, use the **gear icon** on the integration card to change credentials, add Developer API keys, or switch API mode.
+
+### Hybrid Mode — How It Works
+
+Delta 3 devices ignore JSON commands on the MQTT `/set` topic (confirmed via extensive testing, see [H-G hypothesis](https://github.com/windsurf/hassio-ecoflow-eu-delta3/blob/main/CONTRIBUTING.md)). Hybrid mode solves this:
+
+| Function | Channel | API |
+|----------|---------|-----|
+| Real-time sensor data | MQTT push | App Login (Private API) |
+| Switch/number control | REST PUT | Developer API |
+| Fallback control | MQTT protobuf | Built-in proto_codec.py |
+
+**SET command priority chain:** REST API → protobuf MQTT → JSON MQTT (last resort, ignored by Delta 3)
 
 ---
 
@@ -141,7 +159,7 @@ After setup, use the **gear icon** on the integration card to change credentials
 | UPS Mode | ✅ | Enable/disable UPS pass-through |
 | AC Auto-On | off | AC turns on automatically when mains is connected |
 | AC Always-On | off | Keep AC on regardless of SOC |
-| Bypass | off | Enable/disable bypass (doorsluizen) mode |
+| Bypass | off | Enable/disable bypass mode |
 | Beep Sound | off | Enable/disable device beeps |
 
 ### Number Controls (12)
@@ -172,32 +190,46 @@ After setup, use the **gear icon** on the integration card to change credentials
 ## How It Works
 
 ```
-EcoFlow Cloud
+EcoFlow Cloud (Hybrid Mode)
  |
- +-- REST API
- |   +-- /auth/login                  -> token + userId  (App Login)
- |   +-- /iot-auth/app/certification  -> MQTT credentials (App Login)
- |   +-- /iot-open/sign/certification -> MQTT credentials (Developer API)
- |   +-- /iot-open/sign/device/list   -> verify SN during setup
+ +-- REST API (Developer API — Access Key + Secret Key)
+ |   +-- /iot-open/sign/certification   -> MQTT credentials
+ |   +-- /iot-open/sign/device/list     -> verify SN during setup
+ |   +-- /iot-open/sign/device/quota    -> PUT SET commands (switches, numbers)
+ |
+ +-- REST API (App Login — Email + Password)
+ |   +-- /auth/login                    -> token + userId
+ |   +-- /iot-auth/app/certification    -> MQTT credentials
  |
  +-- MQTT TLS :8883  mqtt-e.ecoflow.com
-     App Login  subscribe: /app/device/property/{sn}
-                set:       /app/{userId}/{sn}/thing/property/set
-     Developer  subscribe: /open/{account}/{sn}/quota
-                set:       /open/{account}/{sn}/set
+     App Login  subscribe: /app/device/property/{sn}      (telemetry)
+                set:       /app/{userId}/{sn}/.../set      (protobuf fallback)
+     Developer  subscribe: /open/{account}/{sn}/quota      (telemetry)
+                set:       /open/{account}/{sn}/set         (JSON, older devices)
+
+SET command priority: REST PUT > protobuf MQTT > JSON MQTT
 ```
 
-MQTT push is the primary data source. REST errors (1006, 8521) are non-fatal — the integration continues with MQTT-only mode.
+MQTT push is the primary data source. REST SET is the primary control path for Delta 3. REST errors (1006, 8521) are non-fatal — the integration falls back to MQTT protobuf or JSON.
 
 ---
 
-## Diagnostic Tool
+## Diagnostic Tools
 
-`test_credentials.py` in the repository root lets you verify credentials from the command line:
+Four test scripts in the `examples/` directory let you verify credentials from the command line:
+
+| Script | Tests |
+|--------|-------|
+| `test_credentials.py` / `.ps1` | Developer API credentials against EU/US/Global servers |
+| `test_developer_api.py` / `.ps1` | Extended: signing validation, device list, MQTT creds, quota GET + SET |
 
 ```bash
+# Python
 pip install requests
-python3 test_credentials.py
+python3 examples/test_developer_api.py
+
+# PowerShell
+PowerShell -ExecutionPolicy Bypass -File examples/test_developer_api.ps1
 ```
 
 ---
@@ -214,6 +246,35 @@ logger:
 ---
 
 ## Changelog
+
+### v0.2.21 – Hybrid Mode: REST API SET commands + language cleanup
+
+**Hybrid Mode (major feature):**
+- Added: REST API SET commands via EcoFlow Developer API (`PUT /iot-open/sign/device/quota`) — confirmed working signing for Delta 3
+- Added: `set_quota()` method in `api_client.py` — sends HMAC-signed PUT requests with flattened body-param signing
+- Added: `_sign_get()` and `_sign_put()` — corrected HMAC signing per EcoFlow spec (GET: auth-only; PUT: flatten body + sort + append auth)
+- Added: `_flatten()` helper for dot-notation body parameter signing (`params.enabled=0`)
+- Fixed: `import hashlib` missing in `api_client.py` — caused crash when using public API HMAC signing
+- Added: `attach_developer_api()` on `EcoFlowPrivateAPI` — enables hybrid mode (MQTT read + REST write)
+- Changed: `switch.py` SET priority chain: REST API → protobuf MQTT → JSON MQTT
+- Changed: `number.py` SET priority chain: REST API → JSON MQTT
+- Changed: `select.py` SET priority chain: REST API → JSON MQTT
+- Added: `config_flow.py` — optional Developer API credentials step after App Login (hybrid mode setup)
+- Added: Options flow now shows Developer API fields for private mode entries
+- Added: `CONF_DEV_ACCESS_KEY`, `CONF_DEV_SECRET_KEY`, `CONF_DEV_API_HOST` in `const.py`
+- Added: `developer_creds` step in `strings.json` and `translations/nl.json`
+
+**Language cleanup:**
+- Fixed: all Dutch comments, log messages, docstrings and dashboard headings translated to English across `__init__.py`, `switch.py`, `proto_codec.py`, `README.md`, `dashboard_ecoflow_v1.0.yaml`
+
+**Scripts:**
+- Changed: `push_to_github.ps1` now prompts interactively for GitHub token via `Read-Host` if `$env:GITHUB_TOKEN` is not set
+- Changed: all section comments in `push_to_github.ps1` translated from Dutch to English
+- Added: `delete_workflow_runs.ps1` — helper script to remove failed GitHub Actions workflow runs
+- Added: `examples/test_developer_api.ps1` — PowerShell credential test (signing validated)
+- Added: `examples/test_developer_api.py` — Python credential test with correct signing
+- Added: `examples/test_credentials.ps1` — PowerShell multi-server credential diagnostic
+- Fixed: `examples/test_credentials.py` — signing corrected (removed params from GET signature)
 
 ### v0.2.20 – Fix: manifest.json key order + brand/icon.png + GitHub Actions checkout@v5 + enBeep dataLen=2
 
@@ -326,7 +387,7 @@ logger:
 ### v0.2.13 – Fix: entity key alignment
 
 - `switch` key `pv_charge_priority` → `solar_charge_priority` (matches entity ID)
-- `switch` name `Bypass (Doorsluizen)` → `Bypass` (English, key `bypass` now consistent)
+- `switch` name `Bypass` key now consistent (was previously named with Dutch translation)
 - `number` key `min_ac_soc` → `min_soc_for_ac_auto_on`
 - `number` key `standby_time` → `device_standby_time`
 - `number` key `ac_standby_time` → `ac_output_standby_time`
