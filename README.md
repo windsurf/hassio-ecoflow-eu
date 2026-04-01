@@ -6,13 +6,12 @@
 
 > **Disclaimer:** This software is not affiliated with or endorsed by EcoFlow in any way. It is provided "as-is" without warranty or support, for the educational use of developers and enthusiasts. Use at your own risk.
 
-Real-time monitoring and control of EcoFlow power stations via MQTT. Supports three connection modes:
+Real-time monitoring and control of EcoFlow power stations via MQTT. Supports two connection modes:
 
-- **App Login** (email + password) — MQTT telemetry for all devices including Delta 3
-- **Developer API** (Access Key + Secret Key) — REST API for device list, credentials, and SET commands
-- **Hybrid Mode** (recommended for Delta 3) — App Login for real-time MQTT data + Developer API for reliable REST control
+- **App Login** (email + password) — MQTT telemetry + JSON SET control for all devices including Delta 3
+- **Developer API** (Access Key + Secret Key) — REST API for device list and credentials (SET commands blocked for D361 series)
 
-> **Actively tested with:** EcoFlow Delta 3 1500 (`D361` series, Hybrid Mode)
+> **Actively tested with:** EcoFlow Delta 3 1500 (`D361` series, App Login + MQTT JSON SET)
 
 ---
 
@@ -53,23 +52,23 @@ Select **Auto-detect** (recommended) — Delta 3, newer PowerStream and other re
 
 **Step 2:** Enter credentials for the chosen method.
 
-**Step 3 (App Login only):** Optionally enter Developer API keys to enable **Hybrid Mode**. This adds REST API control for switches and number entities — recommended for Delta 3 devices where MQTT commands are ignored. Leave empty to skip (MQTT-only mode, protobuf fallback).
+**Step 3 (App Login only):** Optionally enter Developer API keys. For Delta 3 (D361) devices this has no effect on control — REST SET is blocked by EcoFlow for this series. Leave empty to skip.
 
 **Step 4:** Automatic connection test — confirms login and shows which devices are on your account.
 
 After setup, use the **gear icon** on the integration card to change credentials, add Developer API keys, or switch API mode.
 
-### Hybrid Mode — How It Works
+### How Control Works (Delta 3)
 
-Delta 3 devices ignore JSON commands on the MQTT `/set` topic (confirmed via extensive testing, see [H-G hypothesis](https://github.com/windsurf/hassio-ecoflow-eu-delta3/blob/main/CONTRIBUTING.md)). Hybrid mode solves this:
+Confirmed via protocol analysis protocol analysis (v0.2.22): Delta 3 uses **MQTT JSON SET** with `"from": "Android"` in the payload.
 
-| Function | Channel | API |
-|----------|---------|-----|
-| Real-time sensor data | MQTT push | App Login (Private API) |
-| Switch/number control | REST PUT | Developer API |
-| Fallback control | MQTT protobuf | Built-in proto_codec.py |
+| Function | Channel | Notes |
+|----------|---------|-------|
+| Real-time sensor data | MQTT push | `/app/device/property/{sn}` |
+| Switch/number control | MQTT JSON SET | `"from":"Android"` required |
+| REST API SET | Blocked | EcoFlow blocks D361/D362/D381/R641/R651 (code=1006) |
 
-**SET command priority chain:** REST API → protobuf MQTT → JSON MQTT (last resort, ignored by Delta 3)
+**SET command payload:** `{id, version:"1.0", sn, moduleType, operateType, from:"Android", params:{...}}`
 
 ---
 
@@ -146,7 +145,7 @@ Delta 3 devices ignore JSON commands on the MQTT `/set` topic (confirmed via ext
 | Deep Discharge Count | | off |
 | Internal Resistance | mΩ | off |
 
-### Switches (11)
+### Switches (12)
 
 | Entity | Default | Notes |
 |--------|---------|-------|
@@ -156,13 +155,14 @@ Delta 3 devices ignore JSON commands on the MQTT `/set` topic (confirmed via ext
 | DC Output | ✅ | Car/Anderson port on/off |
 | AC Charging | ✅ | Pause/resume mains charging — temporary, resets on replug |
 | Solar Charge Priority | ✅ | Prioritise solar over AC |
-| UPS Mode | ✅ | Enable/disable UPS pass-through |
 | AC Auto-On | off | AC turns on automatically when mains is connected |
 | AC Always-On | off | Keep AC on regardless of SOC |
+| Backup Reserve | off | Enable/disable backup reserve mode |
+| Output Memory | off | Remember output states after power loss |
 | Bypass | off | Enable/disable bypass mode |
 | Beep Sound | off | Enable/disable device beeps |
 
-### Number Controls (12)
+### Number Controls (13)
 
 | Entity | Range | Default |
 |--------|-------|---------|
@@ -178,6 +178,7 @@ Delta 3 devices ignore JSON commands on the MQTT `/set` topic (confirmed via ext
 | DC 12V Standby Time | 0–720 min | off |
 | LCD Brightness | 0–100% (step 25) | ✅ |
 | LCD Timeout | 0–300 s | off |
+| Backup Reserve SOC | 0–100% (step 1) | off |
 
 ### Select Controls (1)
 
@@ -190,38 +191,36 @@ Delta 3 devices ignore JSON commands on the MQTT `/set` topic (confirmed via ext
 ## How It Works
 
 ```
-EcoFlow Cloud (Hybrid Mode)
- |
- +-- REST API (Developer API — Access Key + Secret Key)
- |   +-- /iot-open/sign/certification   -> MQTT credentials
- |   +-- /iot-open/sign/device/list     -> verify SN during setup
- |   +-- /iot-open/sign/device/quota    -> PUT SET commands (switches, numbers)
+EcoFlow Cloud (App Login mode — recommended for Delta 3)
  |
  +-- REST API (App Login — Email + Password)
  |   +-- /auth/login                    -> token + userId
  |   +-- /iot-auth/app/certification    -> MQTT credentials
  |
  +-- MQTT TLS :8883  mqtt-e.ecoflow.com
-     App Login  subscribe: /app/device/property/{sn}      (telemetry)
-                set:       /app/{userId}/{sn}/.../set      (protobuf fallback)
-     Developer  subscribe: /open/{account}/{sn}/quota      (telemetry)
-                set:       /open/{account}/{sn}/set         (JSON, older devices)
+     subscribe: /app/device/property/{sn}                  (telemetry push)
+     set:       /app/{userId}/{sn}/thing/property/set       (JSON SET commands)
+     set_reply: /app/{userId}/{sn}/thing/property/set_reply (command ACK)
 
-SET command priority: REST PUT > protobuf MQTT > JSON MQTT
+SET command payload:
+  {"id":<seq>, "version":"1.0", "sn":"<SN>", "moduleType":<n>,
+   "operateType":"<cmd>", "from":"Android", "params":{...}}
+
+REST API: used only for MQTT credential retrieval. SET commands blocked for D361 series.
 ```
 
-MQTT push is the primary data source. REST SET is the primary control path for Delta 3. REST errors (1006, 8521) are non-fatal — the integration falls back to MQTT protobuf or JSON.
+MQTT push is the primary data source. MQTT JSON SET (with `from:Android`) is the control path for Delta 3. REST SET is auto-skipped for D361/D362/D381/R641/R651.
 
 ---
 
 ## Diagnostic Tools
 
-Four test scripts in the `examples/` directory let you verify credentials from the command line:
+Test scripts in the `examples/` directory:
 
-| Script | Tests |
-|--------|-------|
+| Script | Purpose |
+|--------|---------|
 | `test_credentials.py` / `.ps1` | Developer API credentials against EU/US/Global servers |
-| `test_developer_api.py` / `.ps1` | Extended: signing validation, device list, MQTT creds, quota GET + SET |
+| `test_developer_api.py` / `.ps1` | Signing validation, device list, MQTT credentials, quota GET + SET |
 
 ```bash
 # Python
@@ -246,6 +245,39 @@ logger:
 ---
 
 ## Changelog
+
+
+### v0.2.22 – Major: MQTT JSON control working for Delta 3 (protocol analysis protocol analysis)
+
+**Breakthrough:** Full protocol analysis protocol analysis of EcoFlow Android app confirmed that:
+- Delta 3 uses **JSON MQTT SET** (not protobuf, not REST API)
+- Payload requires `"from": "Android"` field — without it the device ignores all commands
+- REST Developer API returns `code=1006` for D361 series — now auto-skipped by SN prefix
+
+**Fixed: all switch/number command parameters corrected from protocol analysis:**
+- `acOutCfg`: `out_voltage=-1`, `out_freq=255`, `xboost=255` (keep-current values)
+- `acChgCfg`: `chgPauseFlag=255` (keep-current), `chgWatts=255` for switch
+- `ac_auto_on`: `acAutoOnCfg` mod=3 (INV), param `enabled` (was mod=PD, wrong param)
+- `bypass`: `bypassBan` + `banBypassEn` (was `acAutoOutConfig` + `acAutoOutPause`)
+- `max_charge_level`: `upsConfig` + `maxChgSoc` (was `maxChargeSoc`)
+- `min_discharge_level`: `dsgCfg` + `minDsgSoc` (was `minDsgSoc` direct)
+- `ac_output_standby`: `standby` mod=5 (was `standbyTime`)
+- `dc_charge_current` (select): param key `dcChgCfg` (was `dcChgCurrent`)
+- `lcd_brightness`: `brighLevel` + `delayOff=65535` (was wrong param key)
+- `ac_auto_on` state_key: `pd.acAutoOnCfg` (was `pd.watchIsConfig`)
+
+**Added:**
+- `Output Memory` switch — `outputMemory` mod=1 (protocol analysis `I()`)
+- `Backup Reserve` switch — `watthConfig` mod=1 (protocol analysis `y()`)
+- `Backup Reserve SOC` number — `watthConfig` with `bpPowerSoc`
+- `Connection Mode` diagnostic sensor — shows `hybrid`/`mqtt_only`/`rest_only`
+- `REST_SET_BLOCKED_SN_PREFIXES` — auto-skip REST for D361/D362/D381/R641/R651
+
+**Removed:**
+- `UPS Mode` switch — `openUpsFlag` is read-only (protobuf heartbeat only, no SET command)
+
+**Updated (examples/):**
+- `test_developer_api.py` / `.ps1` — updated with MQTT JSON SET test (Test 5) and corrected REST SET interpretation for D361
 
 ### v0.2.21 – Hybrid Mode: REST API SET commands + language cleanup
 
@@ -584,7 +616,7 @@ After upgrading, remove these stale entity registrations in HA (Settings → Dev
 | Resource | Used for |
 |----------|----------|
 | [EcoFlow Developer Portal](https://developer-eu.ecoflow.com/us/document/introduction) | Official Open API docs |
-| [mmiller7/ecoflow-withoutflow](https://github.com/mmiller7/ecoflow-withoutflow) | App Login reverse-engineering, Base64 password |
+| [mmiller7/ecoflow-withoutflow](https://github.com/mmiller7/ecoflow-withoutflow) | App Login protocol analysis, Base64 password |
 | [foxthefox/ioBroker.ecoflow-mqtt](https://github.com/foxthefox/ioBroker.ecoflow-mqtt) | Device key reference, set-command payloads |
 | [varakh/go-ecoflow](https://pkg.go.dev/git.myservermanager.com/varakh/go-ecoflow) | Command payload reference |
 | [berezhinskiy/ecoflow_exporter](https://github.com/berezhinskiy/ecoflow_exporter) | MQTT topic structure, payload keys |
