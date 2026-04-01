@@ -1,7 +1,7 @@
 """Constants for EcoFlow Cloud integration."""
 
 DOMAIN              = "ecoflow_cloud"
-INTEGRATION_VERSION = "0.2.21"
+INTEGRATION_VERSION = "0.2.22"
 
 # Config entry keys
 CONF_ACCESS_KEY = "access_key"
@@ -47,7 +47,18 @@ MANUFACTURER = "EcoFlow"
 # Sources:
 #   - https://github.com/tolwi/hassio-ecoflow-cloud
 #   - https://github.com/snell-evan-itt/hassio-ecoflow-cloud-US
-#   - Community reports / reverse engineering
+#   - Community reports / protocol analysis
+# Serial number prefixes for which the Developer REST API SET is blocked.
+# EcoFlow returns code=1006 "not allowed to be controlled" for these devices.
+# MQTT JSON SET (with "from":"Android") is the correct control path instead.
+REST_SET_BLOCKED_SN_PREFIXES = (
+    "D361",   # Delta 3 / Delta 3 1500 — confirmed blocked (28 March 2026)
+    "D362",   # Delta 3 Plus — assumed blocked (same series)
+    "D381",   # Delta 3 Max — assumed blocked (same series)
+    "R641",   # River 3 — assumed blocked
+    "R651",   # River 3 Plus — assumed blocked
+)
+
 PRIVATE_API_SN_PREFIXES = (
     "D361",   # Delta 3 / Delta 3 1500
     "D362",   # Delta 3 Plus
