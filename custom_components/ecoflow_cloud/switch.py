@@ -30,7 +30,7 @@ from .devices.delta3_1500 import (
     KEY_DC_OUT_STATE,
     KEY_AC_BYPASS_PAUSE,
     KEY_OUTPUT_MEMORY,
-    KEY_BP_POWER_SOC,
+    KEY_BP_IS_CONFIG,   # v0.2.23: was KEY_BP_POWER_SOC — corrected to pd.watchIsConfig
 )
 from .proto_codec import (
     build_ac_output,
@@ -43,7 +43,6 @@ from .proto_codec import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Module type constants (EcoFlow MQTT protocol — JSON fallback only)
 MODULE_PD   = 1
 MODULE_BMS  = 2
 MODULE_INV  = 3
@@ -58,9 +57,9 @@ class EcoFlowSwitchDescription(SwitchEntityDescription):
     cmd_operate:  str                        = ""
     cmd_params:   Any                        = None
     inverted:     bool                       = False
-    # v0.2.18: optional protobuf builder — if set, used instead of JSON command
     proto_builder: Optional[Callable[[bool], bytes]] = None
     entity_registry_enabled_default: bool = True
+
 
 
 SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
@@ -74,9 +73,9 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
             "enabled":     1 if on else 0,
-            "xboost":      255,   # 255 = keep current xboost state (protocol verified)
-            "out_voltage": -1,    # -1 = keep current voltage (protocol verified)
-            "out_freq":    255,   # 255 = keep current frequency (protocol verified)
+            "xboost":      255,
+            "out_voltage": -1,
+            "out_freq":    255,
         },
         proto_builder=build_ac_output,
     ),
@@ -88,10 +87,10 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         cmd_module=MODULE_MPPT,
         cmd_operate="acOutCfg",
         cmd_params=lambda on: {
-            "enabled":     255,           # 255 = keep current AC output state
+            "enabled":     255,
             "xboost":      1 if on else 0,
-            "out_voltage": 4294967295,    # keep current voltage (protocol verified)
-            "out_freq":    255,           # keep current frequency (protocol verified)
+            "out_voltage": 4294967295,
+            "out_freq":    255,
         },
         proto_builder=build_xboost,
     ),
@@ -103,7 +102,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         state_key=KEY_USB_OUT_STATE,
         cmd_module=MODULE_PD,
         cmd_operate="dcOutCfg",
-        cmd_params=lambda on: {"enabled": 1 if on else 0},  # protocol analysis: N() mod=1
+        cmd_params=lambda on: {"enabled": 1 if on else 0},
     ),
     EcoFlowSwitchDescription(
         key="dc_output",
@@ -125,9 +124,10 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         inverted=True,
         cmd_module=MODULE_MPPT,
         cmd_operate="acChgCfg",
+        # v0.2.23: chgWatts intentionally omitted — sending 255 writes it as actual value on D361.
+        # Device keeps current wattage when chgWatts is not included in the command.
         cmd_params=lambda on: {
-            "chgWatts":     255,   # 255 = keep current charge watts unchanged
-            "chgPauseFlag": 0 if on else 1,  # 0=charging enabled, 1=paused
+            "chgPauseFlag": 0 if on else 1,
         },
         proto_builder=build_ac_charging,
     ),
@@ -137,31 +137,32 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         key="solar_charge_priority",
         name="Solar Charge Priority",
         icon="mdi:solar-power",
+        entity_registry_enabled_default=False,  # not in app, effect unconfirmed
         state_key=KEY_PV_CHG_PRIO,
         cmd_module=MODULE_PD,
         cmd_operate="pvChangePrio",
-        cmd_params=lambda on: {"pvChangeSet": 1 if on else 0},  # protocol analysis: J() mod=1
+        cmd_params=lambda on: {"pvChangeSet": 1 if on else 0},
     ),
     EcoFlowSwitchDescription(
         key="ac_auto_on",
         name="AC Auto-On",
         icon="mdi:power-plug-outline",
+        entity_registry_enabled_default=False,  # not in app, effect unconfirmed
         state_key=KEY_AC_AUTO_ON,
-        cmd_module=MODULE_INV,   # protocol analysis: k(): mod=3 (INV)
+        cmd_module=MODULE_INV,
         cmd_operate="acAutoOnCfg",
-        cmd_params=lambda on: {"enabled": 1 if on else 0},  # protocol analysis: enabled, not acAutoOnCfg
+        cmd_params=lambda on: {"enabled": 1 if on else 0},
     ),
     EcoFlowSwitchDescription(
         key="ac_always_on",
         name="AC Always-On",
         icon="mdi:power-plug",
+        entity_registry_enabled_default=False,  # not in app, effect unconfirmed
         state_key=KEY_AC_AUTO_OUT,
-        cmd_module=MODULE_PD,    # protocol analysis: B(): acAutoOutConfig mod=1
+        cmd_module=MODULE_PD,
         cmd_operate="acAutoOutConfig",
         cmd_params=lambda on: {"acAutoOutConfig": 1 if on else 0, "minAcOutSoc": 0},
     ),
-    # ups_mode: openUpsFlag is read-only (protobuf heartbeat only, no SET command in protocol analysis)
-    # Removed from switch entities — state visible via sensor if needed.
 
     # ── System ───────────────────────────────────────────────────────────
     EcoFlowSwitchDescription(
@@ -170,9 +171,9 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         icon="mdi:electric-switch",
         state_key=KEY_AC_BYPASS_PAUSE,
         inverted=True,
-        cmd_module=MODULE_PD,    # protocol analysis: v(): bypassBan mod=1
+        cmd_module=MODULE_PD,
         cmd_operate="bypassBan",
-        cmd_params=lambda on: {"banBypassEn": 0 if on else 1},  # protocol verified
+        cmd_params=lambda on: {"banBypassEn": 0 if on else 1},
     ),
     EcoFlowSwitchDescription(
         key="beep_sound",
@@ -181,33 +182,36 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         state_key=KEY_BEEP_MODE,
         cmd_module=MODULE_MPPT,
         cmd_operate="quietMode",
+        # inverted: beepState=1=sound ON; enabled=1=quiet ON=sound OFF
         cmd_params=lambda on: {"enabled": 0 if on else 1},
         proto_builder=build_beep,
     ),
 
-    # ── Memory & Reserve ─────────────────────────────────────────────
+    # ── Memory & Reserve ─────────────────────────────────────────────────
     EcoFlowSwitchDescription(
         key="output_memory",
         name="Output Memory",
         icon="mdi:memory",
+        entity_registry_enabled_default=False,  # no telemetry feedback on D361
         state_key=KEY_OUTPUT_MEMORY,
-        cmd_module=MODULE_PD,    # protocol analysis: I(): outputMemory mod=1
+        cmd_module=MODULE_PD,
         cmd_operate="outputMemory",
         cmd_params=lambda on: {"outputMemoryEn": 1 if on else 0},
     ),
-
     EcoFlowSwitchDescription(
         key="backup_reserve",
         name="Backup Reserve",
         icon="mdi:battery-charging-medium",
-        state_key=KEY_BP_POWER_SOC,
-        cmd_module=MODULE_PD,    # protocol analysis: y(): watthConfig mod=1
+        # v0.2.23: corrected from KEY_BP_POWER_SOC to KEY_BP_IS_CONFIG (pd.watchIsConfig)
+        # confirmed via live MQTT: pd.watchIsConfig 0→1 when enabling Backup Reserve in app
+        state_key=KEY_BP_IS_CONFIG,
+        cmd_module=MODULE_PD,
         cmd_operate="watthConfig",
         cmd_params=lambda on: {
-            "isConfig":  1 if on else 0,
-            "bpPowerSoc": 0,   # SOC via separate number entity
-            "minDsgSoc": 0,
-            "minChgSoc": 0,
+            "isConfig":   1 if on else 0,
+            "bpPowerSoc": 0,
+            "minDsgSoc":  0,
+            "minChgSoc":  0,
         },
     ),
 )
@@ -254,6 +258,7 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             model=DEVICE_MODEL,
         )
 
+
     @property
     def is_on(self) -> bool | None:
         if not self.coordinator.data:
@@ -262,23 +267,19 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         if val is None:
             return None
         active = int(val) == 1
-        result = (not active) if self.entity_description.inverted else active
-        return result
+        return (not active) if self.entity_description.inverted else active
 
     @property
     def available(self) -> bool:
         return bool(self.coordinator.data)
 
     def _publish(self, turn_on: bool) -> None:
-        desc   = self.entity_description
+        desc = self.entity_description
 
-        # ── Priority 1: REST API SET (Developer API) ─────────────────────
-        # Confirmed working for Delta 3 (H-H, 19 March 2026).
-        # Reliable, documented, uses HMAC-signed HTTP PUT.
+        # Priority 1: REST API SET
         rest_api = self._entry_data.get("rest_api")
         if rest_api is not None and desc.cmd_operate:
             params = desc.cmd_params(turn_on) if desc.cmd_params else {}
-            # acOutCfg: always include live xboost value
             if desc.cmd_operate == "acOutCfg":
                 xboost_val = int((self.coordinator.data or {}).get(KEY_AC_XBOOST, 0))
                 params["xboost"] = xboost_val
@@ -295,11 +296,7 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
                     desc.key, exc,
                 )
 
-        # ── Priority 2: JSON MQTT SET ─────────────────────────────────────
-        # protocol analysis: analysis (28 March 2026): EcoFlow app uses JSON on MQTT /set topic.
-        # Topic: /app/{userId}/{sn}/thing/property/set
-        # chgPauseFlag=255 means keep current pause state unchanged.
-        # H-G (protobuf required) is REVISED — app uses JSON, not protobuf.
+        # Priority 2: JSON MQTT SET
         client = self._entry_data.get("mqtt_client")
         topic  = self._entry_data.get("mqtt_topic_set")
 
@@ -311,7 +308,6 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             return
 
         params = desc.cmd_params(turn_on) if desc.cmd_params else {}
-
         cmd = {
             "id":          _next_id(),
             "version":     "1.0",
@@ -326,10 +322,19 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             desc.key, turn_on, topic, params,
         )
         result = client.publish(topic, json.dumps(cmd), qos=1)
-        _LOGGER.debug(
-            "EcoFlow: JSON publish mid=%s rc=%s", result.mid, result.rc,
-        )
+        _LOGGER.debug("EcoFlow: JSON publish mid=%s rc=%s", result.mid, result.rc)
 
+        # After SET: trigger a GET-ALL so coordinator refreshes state keys
+        # that don't update via telemetry push (e.g. chgPauseFlag, outputMemoryEn)
+        import time as _time
+        _time.sleep(1.0)
+        send_get = self._entry_data.get("mqtt_send_get")
+        if send_get:
+            try:
+                send_get("post_set")
+                _LOGGER.debug("EcoFlow: GET-ALL triggered after SET %s", desc.key)
+            except Exception as exc:
+                _LOGGER.debug("EcoFlow: GET-ALL after SET failed: %s", exc)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._publish, True)
