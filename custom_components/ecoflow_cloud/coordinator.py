@@ -99,6 +99,21 @@ class EcoflowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         new_data: dict[str, Any] = {}
         type_code = payload.get("typeCode", "")
+
+        # v0.2.23: D361 uses short typeCode names in telemetry push that differ
+        # from the dotted-prefix keys used in latestQuotas and GET responses.
+        # Map short typeCode → canonical module prefix so coordinator.data keys
+        # are consistent regardless of push shape.
+        _TYPE_CODE_MAP = {
+            "pdStatus":     "pd",
+            "mpptStatus":   "mppt",
+            "invStatus":    "inv",
+            "bmsStatus":    "bms_bmsStatus",
+            "emsStatus":    "bms_emsStatus",
+            "bmsInfo":      "bms_bmsInfo",
+        }
+        if type_code in _TYPE_CODE_MAP:
+            type_code = _TYPE_CODE_MAP[type_code]
         params    = payload.get("params")
         param     = payload.get("param")
         data_dict = payload.get("data")
@@ -107,11 +122,22 @@ class EcoflowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Shape F – latestQuotas: full device state in data.quotaMap (pre-dotted keys)
         #   {operateType: 'latestQuotas', data: {quotaMap: {'pd.acEnabled': 1, ...}}}
+        is_full_refresh = False
         if operate_type == "latestQuotas" and isinstance(data_dict, dict):
             quota_map = data_dict.get("quotaMap")
             if isinstance(quota_map, dict):
                 new_data = {k: v for k, v in quota_map.items() if not isinstance(v, (list, dict))}
+                # v0.2.23: cfgChgWatts=255 is an EcoFlow sentinel meaning "keep current value".
+                # The device always echoes 255 in the latestQuotas reply — never the real value.
+                # Filtering here prevents the HA slider from being overwritten every 20s (keepalive).
+                # Real value changes (e.g. 500W set via app) arrive via regular telemetry push, not here.
+                if new_data.get("mppt.cfgChgWatts") == 255:
+                    new_data.pop("mppt.cfgChgWatts", None)
+                    _LOGGER.debug("MQTT latestQuotas: mppt.cfgChgWatts=255 sentinel filtered out")
                 _LOGGER.debug("MQTT latestQuotas: %d keys received", len(new_data))
+                # latestQuotas is authoritative full device state — use it to replace stale values.
+                # Preserve keys not in quotaMap (e.g. cfgChgWatts after sentinel filter).
+                is_full_refresh = True
         elif type_code and isinstance(params, dict):
             for k, v in params.items():
                 new_data[f"{type_code}.{k}"] = v
@@ -144,4 +170,11 @@ class EcoflowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "MQTT data received: %d keys — all keys: %s",
             len(scalar_data), sorted(scalar_data.keys())
         )
-        self.async_set_updated_data({**(self.data or {}), **scalar_data})
+        if is_full_refresh:
+            # Full refresh: quotaMap is authoritative — overwrite existing data with fresh values
+            # but preserve keys that were filtered (e.g. cfgChgWatts real value from telemetry)
+            merged = {**(self.data or {}), **scalar_data}
+            self.async_set_updated_data(merged)
+        else:
+            # Delta push: merge new values into existing data
+            self.async_set_updated_data({**(self.data or {}), **scalar_data})
