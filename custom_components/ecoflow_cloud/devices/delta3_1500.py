@@ -139,11 +139,13 @@ KEY_CHG_POWER_AC    = "pd.chgPowerAC"                  # Cumul. AC charged      
 KEY_CHG_POWER_DC    = "pd.chgPowerDC"                  # Cumul. DC charged         (x0.001 kWh)
 KEY_DSG_POWER_AC    = "pd.dsgPowerAC"                  # Cumul. AC discharged      (x0.1 W)
 KEY_DSG_POWER_DC    = "pd.dsgPowerDC"                  # Cumul. DC discharged      (x0.1 W)
-KEY_AC_AUTO_ON      = "pd.watchIsConfig"               # Memory AC outputs on/off  (0/1) -- confirmed by app MQTT trace (was pd.acAutoOnCfg)
+KEY_AC_AUTO_ON      = "pd.acAutoOnCfg"                # AC Auto-On enabled        (0/1) -- protocol analysis k(): acAutoOnCfg mod=3
 KEY_AC_AUTO_OUT     = "pd.acAutoOutConfig"             # AC always-on enabled      (0/1)
 KEY_AC_BYPASS_PAUSE = "pd.acAutoOutPause"              # Bypass paused             (0=active, 1=paused)
 KEY_MIN_AC_SOC      = "pd.minAcoutSoc"                 # Min SOC for AC auto-on    (%)
 KEY_BP_POWER_SOC    = "pd.bpPowerSoc"                  # Battery protection SOC    (%)
+KEY_BP_IS_CONFIG    = "pd.bpPowerSoc"                  # Backup reserve enabled    (0/1) -- same key, nonzero = enabled
+KEY_OUTPUT_MEMORY   = "pd.acAutoOnCfg"                 # Output memory enabled     (0/1) -- protocol analysis I(): outputMemoryEn
 KEY_DC12V_IN_W      = "pd.carWatts"                    # DC 12V input power        (W)
 
 # ── Device info ───────────────────────────────────────────────────────────────
