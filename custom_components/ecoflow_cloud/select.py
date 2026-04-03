@@ -107,7 +107,7 @@ SELECT_DESCRIPTIONS: tuple[EcoFlowSelectDescription, ...] = (
             "24 hr":    1440,
         },
         cmd_module=MODULE_MPPT,
-        cmd_operate="standby",
+        cmd_operate="standbyTime",  # confirmed: standbyTime not standby (live test 2026-04-03)
         cmd_param_key="standbyMins",
     ),
     EcoFlowSelectDescription(
