@@ -116,20 +116,20 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
     ),
 
     # ── AC Charging ───────────────────────────────────────────────────────
+    # v0.2.24: read-only — D361 does not support acChgCfg chgPauseFlag via MQTT.
+    # Confirmed via live test: command is received (beep) but has no effect.
+    # mppt.chgPauseFlag is never pushed in D361 telemetry.
+    # Use inv.inputWatts > 0 or bms_emsStatus.sysChgDsgState == 2 to detect active charging.
     EcoFlowSwitchDescription(
         key="ac_charging",
         name="AC Charging",
         icon="mdi:transmission-tower",
         state_key=KEY_AC_CHG_PAUSE,
         inverted=True,
-        cmd_module=MODULE_MPPT,
-        cmd_operate="acChgCfg",
-        # v0.2.23: chgWatts intentionally omitted — sending 255 writes it as actual value on D361.
-        # Device keeps current wattage when chgWatts is not included in the command.
-        cmd_params=lambda on: {
-            "chgPauseFlag": 0 if on else 1,
-        },
-        proto_builder=build_ac_charging,
+        entity_registry_enabled_default=False,  # read-only, state key never pushed on D361
+        cmd_module=0,
+        cmd_operate="",
+        cmd_params=None,
     ),
 
     # ── Charging behaviour ────────────────────────────────────────────────
@@ -166,11 +166,23 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
 
     # ── System ───────────────────────────────────────────────────────────
     EcoFlowSwitchDescription(
+        key="ups_mode",
+        name="UPS Mode",
+        icon="mdi:power-socket",
+        entity_registry_enabled_default=False,  # effect unconfirmed on D361
+        state_key=KEY_EMS_UPS_FLAG,
+        cmd_module=MODULE_BMS,
+        cmd_operate="upsConfig",
+        cmd_params=lambda on: {"openUpsFlag": 1 if on else 0},
+        proto_builder=build_ups_mode,
+    ),
+    EcoFlowSwitchDescription(
         key="bypass",
         name="Bypass",
         icon="mdi:electric-switch",
         state_key=KEY_AC_BYPASS_PAUSE,
         inverted=True,
+        entity_registry_enabled_default=False,  # ACK only — no telemetry feedback on D361
         cmd_module=MODULE_PD,
         cmd_operate="bypassBan",
         cmd_params=lambda on: {"banBypassEn": 0 if on else 1},
@@ -192,7 +204,7 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
         key="output_memory",
         name="Output Memory",
         icon="mdi:memory",
-        entity_registry_enabled_default=False,  # no telemetry feedback on D361
+        entity_registry_enabled_default=False,  # ACK only — no telemetry feedback on D361; state unknown
         state_key=KEY_OUTPUT_MEMORY,
         cmd_module=MODULE_PD,
         cmd_operate="outputMemory",
