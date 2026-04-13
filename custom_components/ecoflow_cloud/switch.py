@@ -38,7 +38,10 @@ from .proto_codec import (
     build_ac_charging,
     build_beep,
     build_ups_mode,
+    ps_build_feed_protect,
 )
+from .devices import glacier as gl
+from .devices import powerstream as ps
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +60,9 @@ class EcoFlowSwitchDescription(SwitchEntityDescription):
     cmd_params:   Any                        = None
     inverted:     bool                       = False
     proto_builder: Optional[Callable[[bool], bytes]] = None
+    # proto_builder_sn: like proto_builder but receives (value, device_sn) → bytes
+    # Used by PowerStream which needs device_sn in the protobuf envelope
+    proto_builder_sn: Optional[Callable] = None
     entity_registry_enabled_default: bool = True
 
 
@@ -419,20 +425,186 @@ _R2PRO_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
         cmd_params=lambda on: {"enabled": 1 if on else 0}),
 )
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Gen 1 devices — TCP command protocol (moduleType=0, operateType="TCP", params.id)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta_pro as dp
+from .devices import river1 as r1
+
+# Delta Pro: 6 switches (Beeper, DC, AC, X-Boost, AC Always-On, Backup Reserve)
+_DPRO_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=dp.KEY_BEEP, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 38, "enabled": 0 if on else 1}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key=dp.KEY_DC_OUT_STATE, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 81, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dp.KEY_AC_ENABLED, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dp.KEY_AC_XBOOST, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "xboost": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="ac_always_on", name="AC Always-On", icon="mdi:power-plug",
+        state_key=dp.KEY_AC_AUTO_OUT, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 95, "acautooutConfig": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="backup_reserve", name="Backup Reserve", icon="mdi:battery-charging-medium",
+        state_key=dp.KEY_BP_IS_CONFIG, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 94, "isConfig": 1 if on else 0, "bpPowerSoc": 50 if on else 0, "minDsgSoc": 0, "maxChgSoc": 0}),
+)
+
+# Delta Max: 7 switches (same + USB + PV Priority)
+_DMAX_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=dp.KEY_BEEP, cmd_module=5, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 38, "enabled": 0 if on else 1}),
+    EcoFlowSwitchDescription(key="usb_output", name="USB Output", icon="mdi:usb-port",
+        state_key="pd.dcOutState", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "id": 34}),
+    EcoFlowSwitchDescription(key="ac_always_on", name="AC Always-On", icon="mdi:power-plug",
+        state_key="pd.acAutoOnCfg", cmd_module=1, cmd_operate="acAutoOn",
+        cmd_params=lambda on: {"cfg": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="solar_charge_priority", name="Solar Charge Priority", icon="mdi:solar-power",
+        state_key="pd.pvChgPrioSet", cmd_module=1, cmd_operate="pvChangePrio",
+        cmd_params=lambda on: {"pvChangeSet": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dp.KEY_AC_ENABLED, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "id": 66}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dp.KEY_AC_XBOOST, cmd_module=5, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "xboost": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key=dp.KEY_DC_OUT_STATE, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "id": 81}),
+)
+
+# Delta Mini: 4 switches (Beeper, DC, AC, X-Boost)
+_DMINI_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=dp.KEY_BEEP, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 38, "enabled": 0 if on else 1}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key=dp.KEY_DC_OUT_STATE, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 81, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dp.KEY_AC_ENABLED, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dp.KEY_AC_XBOOST, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "xboost": 1 if on else 0}),
+)
+
+# River Max: 5 switches (Beeper, AC, DC, X-Boost, Auto Fan)
+_RMAX_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=dp.KEY_BEEP, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 38, "enabled": 0 if on else 1}),
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dp.KEY_AC_ENABLED, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key="pd.carSwitch", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 34, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dp.KEY_AC_XBOOST, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "xboost": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="auto_fan_speed", name="Auto Fan Speed", icon="mdi:fan-auto",
+        state_key="inv.cfgFanMode", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 73, "fanMode": 1 if on else 0}),
+)
+
+# River Pro: 7 switches (Beeper, AC Always-On, DC, AC, X-Boost, AC Slow Charge, Auto Fan)
+_RPRO_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=dp.KEY_BEEP, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 38, "enabled": 0 if on else 1}),
+    EcoFlowSwitchDescription(key="ac_always_on", name="AC Always-On", icon="mdi:power-plug",
+        state_key="inv.acAutoOutConfig", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 95, "acAutoOutConfig": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key="pd.carSwitch", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 34, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dp.KEY_AC_ENABLED, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dp.KEY_AC_XBOOST, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "xboost": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="ac_slow_charge", name="AC Slow Charging", icon="mdi:ev-plug-type2",
+        state_key="inv.cfgAcChgModeFlg", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 69, "workMode": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="auto_fan_speed", name="Auto Fan Speed", icon="mdi:fan-auto",
+        state_key="inv.cfgFanMode", cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 73, "fanMode": 1 if on else 0}),
+)
+
+# River Mini: 2 switches (AC, X-Boost)
+_RMINI_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dp.KEY_AC_ENABLED, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dp.KEY_AC_XBOOST, cmd_module=0, cmd_operate="TCP",
+        cmd_params=lambda on: {"id": 66, "xboost": 1 if on else 0}),
+)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Glacier — 3 switches (Beeper, Eco Mode, Power)
+# JSON protocol: moduleType=1, operateType per command
+# ══════════════════════════════════════════════════════════════════════════════
+
+_GL_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=gl.KEY_BEEP_EN, cmd_module=1, cmd_operate="beepEn",
+        cmd_params=lambda on: {"flag": 0 if on else 1},
+        inverted=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="eco_mode", name="Eco Mode", icon="mdi:leaf",
+        state_key=gl.KEY_COOL_MODE, cmd_module=1, cmd_operate="ecoMode",
+        cmd_params=lambda on: {"mode": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="power", name="Power", icon="mdi:power",
+        state_key=gl.KEY_PWR_STATE, cmd_module=1, cmd_operate="powerOff",
+        cmd_params=lambda on: {"enable": 1 if on else 0},
+    ),
+)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PowerStream — 1 switch (Feed-in Control)
+# Protobuf binary protocol: cmd_func=20, cmd_id per command
+# ══════════════════════════════════════════════════════════════════════════════
+
+_PS_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="feed_in_control", name="Feed-in Control", icon="mdi:transmission-tower-export",
+        state_key=ps.KEY_SMART_LOADS,
+        proto_builder_sn=lambda on, sn: ps_build_feed_protect(on, sn),
+    ),
+)
+
 # ── Description registry — keyed by device model ─────────────────────────────
 SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = {
     "Delta 3 1500": _D361_SWITCHES,
     "Delta 2": _D2_SWITCHES,
     "Delta 2 Max": _D2M_SWITCHES,
-    "Delta Pro": (),  # Gen 1 TCP commands not yet supported
-    "Delta Max": (),
-    "Delta Mini": (),
+    "Delta Pro": _DPRO_SWITCHES,
+    "Delta Max": _DMAX_SWITCHES,
+    "Delta Mini": _DMINI_SWITCHES,
     "River 2": _R2_SWITCHES,
-    "River 2 Max": _R2_SWITCHES,       # identical to R2
+    "River 2 Max": _R2_SWITCHES,
     "River 2 Pro": _R2PRO_SWITCHES,
-    "River Max": (),   # Gen 1 TCP commands not yet supported
-    "River Pro": (),
-    "River Mini": (),
+    "River Max": _RMAX_SWITCHES,
+    "River Pro": _RPRO_SWITCHES,
+    "River Mini": _RMINI_SWITCHES,
+    "PowerStream": _PS_SWITCHES,
+    "PowerStream 600W": _PS_SWITCHES,
+    "PowerStream 800W": _PS_SWITCHES,
+    "Glacier": _GL_SWITCHES,
+    "Wave 2": (),  # no switches (tolwi confirms empty)
 }
 
 
@@ -524,7 +696,23 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
                     desc.key, exc,
                 )
 
-        # Priority 2: JSON MQTT SET
+        # Priority 2: Protobuf binary MQTT SET (PowerStream)
+        if desc.proto_builder_sn is not None:
+            client = self._entry_data.get("mqtt_client")
+            topic  = self._entry_data.get("mqtt_topic_set")
+            if not client or not topic:
+                _LOGGER.error("EcoFlow: no MQTT client — cannot send %s proto command", desc.key)
+                return
+            payload = desc.proto_builder_sn(turn_on, self._sn)
+            _LOGGER.info(
+                "EcoFlow: PROTO SET %s turn_on=%s topic=%s len=%d",
+                desc.key, turn_on, topic, len(payload),
+            )
+            result = client.publish(topic, payload, qos=1)
+            _LOGGER.debug("EcoFlow: Proto publish mid=%s rc=%s", result.mid, result.rc)
+            return
+
+        # Priority 3: JSON MQTT SET
         client = self._entry_data.get("mqtt_client")
         topic  = self._entry_data.get("mqtt_topic_set")
 
