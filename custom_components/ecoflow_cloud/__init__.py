@@ -25,6 +25,7 @@ from .const import (
 )
 from .api_client import EcoFlowAPI, EcoFlowPrivateAPI, EcoFlowAPIError
 from .coordinator import EcoflowCoordinator
+from .devices.registry import detect_model
 from .proto_codec import dump_fields
 
 _LOGGER = logging.getLogger(__name__)
@@ -126,11 +127,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception as exc:
         _LOGGER.warning("EcoFlow: REST initial data failed (non-fatal): %s", exc)
 
+    # ── Device model detection ────────────────────────────────────────────
+    device_model = detect_model(sn)
+
     # ── Store objects ─────────────────────────────────────────────────────
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "api": api, "coordinator": coordinator, "sn": sn,
         "rest_api": dev_api,  # None if no Developer API configured
+        "device_model": device_model,
     }
 
     # ── MQTT topics ───────────────────────────────────────────────────────
