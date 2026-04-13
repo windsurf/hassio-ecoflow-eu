@@ -17,7 +17,6 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import EcoflowCoordinator
 from . import _next_id
 from .devices.delta3_1500 import (
-    DEVICE_MODEL,
     KEY_AC_ENABLED,
     KEY_AC_XBOOST,
     KEY_USB_OUT_STATE,
@@ -62,7 +61,7 @@ class EcoFlowSwitchDescription(SwitchEntityDescription):
 
 
 
-SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
+_D361_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
     # ── Outputs ──────────────────────────────────────────────────────────
     EcoFlowSwitchDescription(
         key="ac_output",
@@ -231,6 +230,217 @@ SWITCH_DESCRIPTIONS: tuple[EcoFlowSwitchDescription, ...] = (
 )
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta 2 — 8 switches
+# Source: tolwi/hassio-ecoflow-cloud (internal/delta2.py)
+# All commands identical to Delta 3 1500 subset
+# ══════════════════════════════════════════════════════════════════════════════
+
+_D2_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="beep_sound",
+        name="Beep Sound",
+        icon="mdi:volume-high",
+        state_key=KEY_BEEP_MODE,
+        cmd_module=MODULE_MPPT,
+        cmd_operate="quietMode",
+        cmd_params=lambda on: {"enabled": 0 if on else 1},
+    ),
+    EcoFlowSwitchDescription(
+        key="usb_output",
+        name="USB Output",
+        icon="mdi:usb-port",
+        state_key=KEY_USB_OUT_STATE,
+        cmd_module=MODULE_PD,
+        cmd_operate="dcOutCfg",
+        cmd_params=lambda on: {"enabled": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="ac_always_on",
+        name="AC Always-On",
+        icon="mdi:power-plug",
+        state_key=KEY_AC_AUTO_OUT,
+        cmd_module=MODULE_PD,
+        cmd_operate="acAutoOutConfig",
+        cmd_params=lambda on: {"acAutoOutConfig": 1 if on else 0, "minAcOutSoc": 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="solar_charge_priority",
+        name="Solar Charge Priority",
+        icon="mdi:solar-power",
+        state_key=KEY_PV_CHG_PRIO,
+        cmd_module=MODULE_PD,
+        cmd_operate="pvChangePrio",
+        cmd_params=lambda on: {"pvChangeSet": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="ac_output",
+        name="AC Output",
+        icon="mdi:power-socket-eu",
+        state_key=KEY_AC_ENABLED,
+        cmd_module=MODULE_MPPT,
+        cmd_operate="acOutCfg",
+        cmd_params=lambda on: {
+            "enabled":     1 if on else 0,
+            "xboost":      255,
+            "out_voltage": -1,
+            "out_freq":    255,
+        },
+    ),
+    EcoFlowSwitchDescription(
+        key="x_boost",
+        name="X-Boost",
+        icon="mdi:lightning-bolt",
+        state_key=KEY_AC_XBOOST,
+        cmd_module=MODULE_MPPT,
+        cmd_operate="acOutCfg",
+        cmd_params=lambda on: {
+            "enabled":     255,
+            "xboost":      1 if on else 0,
+            "out_voltage": 4294967295,
+            "out_freq":    255,
+        },
+    ),
+    EcoFlowSwitchDescription(
+        key="dc_output",
+        name="DC Output",
+        icon="mdi:car-electric",
+        state_key=KEY_DC_OUT_STATE,
+        cmd_module=MODULE_MPPT,
+        cmd_operate="mpptCar",
+        cmd_params=lambda on: {"enabled": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="backup_reserve",
+        name="Backup Reserve",
+        icon="mdi:battery-charging-medium",
+        state_key=KEY_BP_IS_CONFIG,
+        cmd_module=MODULE_PD,
+        cmd_operate="watthConfig",
+        cmd_params=lambda on: {
+            "isConfig":   1 if on else 0,
+            "bpPowerSoc": 50 if on else 0,
+            "minDsgSoc":  0,
+            "minChgSoc":  0,
+        },
+    ),
+)
+
+from .devices.delta2_max import (
+    KEY_BEEP_D2M, KEY_AC_ENABLED_D2M, KEY_AC_XBOOST_D2M,
+    KEY_AC_ALWAYS_ON_D2M,
+)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta 2 Max — 7 switches
+# Source: tolwi/hassio-ecoflow-cloud (internal/delta2_max.py)
+# Key differences: beep on pd.beepMode, AC via inv module (3), newAcAutoOnCfg
+# ══════════════════════════════════════════════════════════════════════════════
+
+_D2M_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="beep_sound", name="Beep Sound", icon="mdi:volume-high",
+        state_key=KEY_BEEP_D2M,
+        cmd_module=MODULE_PD, cmd_operate="quietCfg",
+        cmd_params=lambda on: {"enabled": 0 if on else 1},
+    ),
+    EcoFlowSwitchDescription(
+        key="usb_output", name="USB Output", icon="mdi:usb-port",
+        state_key=KEY_USB_OUT_STATE,
+        cmd_module=MODULE_PD, cmd_operate="dcOutCfg",
+        cmd_params=lambda on: {"enabled": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="ac_always_on", name="AC Always-On", icon="mdi:power-plug",
+        state_key=KEY_AC_ALWAYS_ON_D2M,
+        cmd_module=MODULE_PD, cmd_operate="newAcAutoOnCfg",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "minAcSoc": 5},
+    ),
+    EcoFlowSwitchDescription(
+        key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=KEY_AC_ENABLED_D2M,
+        cmd_module=MODULE_INV, cmd_operate="acOutCfg",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "out_voltage": -1, "out_freq": 255, "xboost": 255},
+    ),
+    EcoFlowSwitchDescription(
+        key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=KEY_AC_XBOOST_D2M,
+        cmd_module=MODULE_INV, cmd_operate="acOutCfg",
+        cmd_params=lambda on: {"xboost": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key=KEY_DC_OUT_STATE,
+        cmd_module=MODULE_MPPT, cmd_operate="mpptCar",
+        cmd_params=lambda on: {"enabled": 1 if on else 0},
+    ),
+    EcoFlowSwitchDescription(
+        key="backup_reserve", name="Backup Reserve", icon="mdi:battery-charging-medium",
+        state_key=KEY_BP_IS_CONFIG,
+        cmd_module=MODULE_PD, cmd_operate="watthConfig",
+        cmd_params=lambda on: {"isConfig": 1 if on else 0, "bpPowerSoc": 50 if on else 0, "minDsgSoc": 0, "minChgSoc": 0},
+    ),
+)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# River 2 series — 5 switches (R2/R2Max), 3 switches (R2Pro)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices.river2 import KEY_AC_ENABLED as R2_AC_ENABLED
+
+_R2_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=R2_AC_ENABLED, cmd_module=MODULE_MPPT, cmd_operate="acOutCfg",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "out_voltage": -1, "out_freq": 255, "xboost": 255}),
+    EcoFlowSwitchDescription(key="ac_always_on", name="AC Always-On", icon="mdi:power-plug",
+        state_key=KEY_AC_AUTO_OUT, cmd_module=MODULE_PD, cmd_operate="acAutoOutConfig",
+        cmd_params=lambda on: {"acAutoOutConfig": 1 if on else 0, "minAcOutSoc": 0}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=KEY_AC_XBOOST, cmd_module=MODULE_MPPT, cmd_operate="acOutCfg",
+        cmd_params=lambda on: {"enabled": 255, "out_voltage": -1, "out_freq": 255, "xboost": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key=KEY_DC_OUT_STATE, cmd_module=MODULE_MPPT, cmd_operate="mpptCar",
+        cmd_params=lambda on: {"enabled": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="backup_reserve", name="Backup Reserve", icon="mdi:battery-charging-medium",
+        state_key=KEY_BP_IS_CONFIG, cmd_module=MODULE_PD, cmd_operate="watthConfig",
+        cmd_params=lambda on: {"isConfig": 1 if on else 0, "bpPowerSoc": 50 if on else 0, "minDsgSoc": 0, "minChgSoc": 0}),
+)
+
+# River 2 Pro: no AC Always-On, no Backup Reserve
+_R2PRO_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(key="ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=R2_AC_ENABLED, cmd_module=MODULE_MPPT, cmd_operate="acOutCfg",
+        cmd_params=lambda on: {"enabled": 1 if on else 0, "out_voltage": -1, "out_freq": 255, "xboost": 255}),
+    EcoFlowSwitchDescription(key="x_boost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=KEY_AC_XBOOST, cmd_module=MODULE_MPPT, cmd_operate="acOutCfg",
+        cmd_params=lambda on: {"enabled": 255, "out_voltage": -1, "out_freq": 255, "xboost": 1 if on else 0}),
+    EcoFlowSwitchDescription(key="dc_output", name="DC Output", icon="mdi:car-electric",
+        state_key=KEY_DC_OUT_STATE, cmd_module=MODULE_MPPT, cmd_operate="mpptCar",
+        cmd_params=lambda on: {"enabled": 1 if on else 0}),
+)
+
+# ── Description registry — keyed by device model ─────────────────────────────
+SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = {
+    "Delta 3 1500": _D361_SWITCHES,
+    "Delta 2": _D2_SWITCHES,
+    "Delta 2 Max": _D2M_SWITCHES,
+    "Delta Pro": (),  # Gen 1 TCP commands not yet supported
+    "Delta Max": (),
+    "Delta Mini": (),
+    "River 2": _R2_SWITCHES,
+    "River 2 Max": _R2_SWITCHES,       # identical to R2
+    "River 2 Pro": _R2PRO_SWITCHES,
+    "River Max": (),   # Gen 1 TCP commands not yet supported
+    "River Pro": (),
+    "River Mini": (),
+}
+
+
+def _get_switch_descriptions(model: str) -> tuple[EcoFlowSwitchDescription, ...]:
+    """Get switch descriptions for a device model. Falls back to empty tuple."""
+    return SWITCH_DESCRIPTIONS_BY_MODEL.get(model, ())
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -240,10 +450,13 @@ async def async_setup_entry(
     entry_data  = hass.data[DOMAIN][entry.entry_id]
     coordinator = entry_data["coordinator"]
     sn          = entry_data["sn"]
+    device_model = entry_data.get("device_model", "Delta 3 1500")
+
+    descriptions = _get_switch_descriptions(device_model)
 
     async_add_entities(
-        EcoFlowSwitchEntity(coordinator, desc, entry_data, sn)
-        for desc in SWITCH_DESCRIPTIONS
+        EcoFlowSwitchEntity(coordinator, desc, entry_data, sn, device_model)
+        for desc in descriptions
     )
 
 
@@ -258,6 +471,7 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         description: EcoFlowSwitchDescription,
         entry_data: dict,
         sn: str,
+        device_model: str = "Delta 3 1500",
     ) -> None:
         super().__init__(coordinator)
         self.entity_description  = description
@@ -267,9 +481,9 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         self._attr_has_entity_name = True
         self._attr_device_info   = DeviceInfo(
             identifiers={(DOMAIN, sn)},
-            name=f"EcoFlow {DEVICE_MODEL}",
+            name=f"EcoFlow {device_model}",
             manufacturer=MANUFACTURER,
-            model=DEVICE_MODEL,
+            model=device_model,
         )
 
 
