@@ -1,6 +1,6 @@
 {
   "domain": "ecoflow_cloud",
-  "name": "EcoFlow Cloud (EU Delta 3)",
+  "name": "EcoFlow Cloud",
   "codeowners": [
     "@windsurf"
   ],
@@ -12,5 +12,5 @@
   "requirements": [
     "paho-mqtt>=1.6.1"
   ],
-  "version": "0.2.25"
+  "version": "0.3.0"
 }
