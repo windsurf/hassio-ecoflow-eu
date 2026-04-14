@@ -314,6 +314,7 @@ SELECT_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSelectDescription, ...]] = 
     "PowerStream 800W": _PS_SELECTS,
     "Glacier": (),  # no selects (tolwi confirms empty)
     "Wave 2": _W2_SELECTS,
+    "Smart Plug": (),  # no selects
 }
 
 
