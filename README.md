@@ -331,6 +331,58 @@ logger:
 
 ## Changelog
 
+### v0.3.4 -- Protobuf telemetry decoder (Smart Plug + PowerStream sensors live)
+
+**Protobuf telemetry decoder:**
+- Binary MQTT messages (protobuf) are now decoded and fed into the coordinator
+- Previously these messages were logged but discarded — sensors never received data
+- Generic decoder in proto_codec.py: parses EcoFlow envelope → extracts header (cmd_func, cmd_id) → maps pdata fields to coordinator keys
+
+**Smart Plug (SP10) — now full control (was commands-only):**
+- 5 sensor entities now receive live data: Power, Voltage, Current, Temperature, Frequency
+- Heartbeat telemetry (WnPlugHeartbeatPack, cmdFunc=2) decoded with 11 field mappings
+- Promotes Smart Plug from commands-only to full control (16 devices, all full control)
+
+**PowerStream — protobuf sensor path enabled:**
+- inverter_heartbeat (cmdFunc=20) decoded with 56 field mappings
+- Covers all solar, battery, inverter, LLC, and system sensors
+- Works alongside existing JSON path — protobuf data merges into coordinator
+
+**Infrastructure:**
+- `decode_proto_telemetry()` in proto_codec.py: header extraction + field mapping per cmdFunc
+- `_parse_fields()`: generic protobuf wire-format parser (varint, LEN, fixed32, fixed64)
+- `_extract_header()`: EcoFlow envelope parser (pdata, src, dest, cmd_func, cmd_id)
+- Field mapping tables: `_PS_HEARTBEAT_FIELDS` (56 fields), `_SP_HEARTBEAT_FIELDS` (11 fields)
+- Extensible: add new device decoders by adding a cmdFunc entry to `_HEARTBEAT_DECODERS`
+
+**Output Memory (D361) — state retrieval at startup:**
+- `pd.outputMemoryEn` is not included in latestQuotas or regular telemetry push
+- Added `getOutputMemory` JSON GET to the MQTT init sequence (step 5)
+- Switch now enabled by default with `optimistic=True` for immediate toggle feedback
+- Initial state loaded from device reply at startup
+
+16 devices total, all with full control.
+
+**Delta Pro 3 (DGEA) — full device profile (17th device):**
+- New command protocol: `{sn, cmdId:17, cmdFunc:254, dest:2, dirDest:1, dirSrc:1, needAck:true, params:{...}}`
+- Flat quota keys (no pd./mppt. prefix): `enBeep`, `cmsMaxChgSoc`, `flowInfoAcHvOut`, etc.
+- 14 sensors: charge limits, standby timers, power settings, generator SOC thresholds
+- 9 switches: Beep, X-Boost, AC HV/LV Output, DC 12V, Energy Backup, Generator Auto-Start, GFCI, AC Energy Saving
+- 13 numbers: Max/Min SOC, AC/DC/Device standby times, LCD brightness, AC charging power, solar current limits, generator SOC
+- 1 button: Power Off
+- DP3 command dispatch added to switch.py, number.py, button.py (Priority 2.5)
+- Device profile: `devices/delta_pro_3.py` with 26 quota keys + 26 command keys + envelope constants
+- Source: Official EcoFlow Developer Platform docs (developer-eu.ecoflow.com/us/document/deltaPro3)
+
+17 devices total (16 original + Delta Pro 3). All with full control.
+
+**Delta 3 Plus (D362) + Delta 3 Max (D381) — same protocol as D361:**
+- Registered in sensor, switch, number, button registries using D361 definitions
+- Same JSON MQTT SET protocol, same dotted quota keys, same commands
+- Already in device registry (SN prefix detection) and REST_SET_BLOCKED list
+
+19 devices total. All with full control.
+
 ### v0.3.3 -- D361 Beep Sound fix + Bypass optimistic + tested live
 
 **Beep Sound fix (D361) -- confirmed working via live test:**
