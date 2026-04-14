@@ -137,9 +137,133 @@ Confirmed via live protocol analysis (v0.2.22–v0.2.24): Delta 3 uses **MQTT JS
 
 > Entities marked **off** are disabled by default. Enable them in Settings → Devices & Services → your device → the entity.
 
-### Sensors (221)
+### Delta 3 1500 — Sensors (185)
 
-See [v0.2.23 README](https://github.com/windsurf/hassio-ecoflow-eu-delta3/releases/tag/v0.2.23) for full sensor list. No sensor changes in v0.2.24.
+**Battery (17):** Battery Level, Battery Level (precise), State of Health, Charge Cycles, Remaining Capacity, Full Capacity, Design Capacity, Battery Voltage, Battery Current, Battery Temperature, Min/Max Cell Temperature, Min/Max MOS Temperature, Min/Max Cell Voltage, Max Cell Voltage Difference
+
+**EMS (9):** Time Remaining, Time to Full, Max Charge Level, Min Discharge Level, EMS Charge Voltage, EMS Charge Current, Fan Level, AC Plug Connected, System Charge/Discharge State
+
+**AC / Inverter (15):** AC Output Power, AC Input Power, AC Input Voltage/Current/Frequency, AC Output Voltage/Current/Frequency, AC Configured Frequency, AC Fast/Slow Charge Watts, Inverter Temperature, Inverter DC Input Voltage/Current/Temperature
+
+**Solar / MPPT (11):** Solar Input Power/Voltage/Current, MPPT Output Power, MPPT Temperature, DC 12V Output/Input Power, DC 12V Temperature, DC 12V Port State, DC Output Temperature, MPPT DC Converter Power
+
+**USB / PD (10):** Total Input/Output Power, USB-A 1/2 Power, USB-A QC 1/2 Power, USB-C 1/2 Power, USB-C 1/2 Temperature
+
+**Energy totals (3):** Cumulative AC Charged, Cumulative DC Charged, Solar Charge Power
+
+**System (2):** Battery Protection SOC, WiFi Signal
+
+**Extra battery kit (2):** Extra Battery Power, Extra Batteries Connected
+
+**Slave battery (33):** Mirrors main battery sensors for attached slave battery — Level, Voltage, Current, Temperature, Capacity, SoH, Input/Output Power, Cell Voltages, MOS Temps, Lifetime stats, Error Code (20 disabled by default as diagnostics)
+
+**Battery lifetime (10):** SoH (Info), Total Cycles, Cumulative Charged/Discharged Capacity, Cumulative Charged/Discharged Energy, Round-Trip Efficiency, Self-Discharge Rate, Deep Discharge Count, Internal Resistance
+
+**BMS extended diagnostics (22):** Actual SOC, BMS SOC, Charge/System/MOS/Fault States, Error Codes, Cell Balancing, Charged/Discharged Capacity, Input/Output Power, Real/Calculated/Cycle SoH, SOC Difference, Target SOC, Target Charge Current, Remaining Time, BQ Status Register
+
+**BmsInfo lifetime (5):** High/Low Temp Charge Time, High/Low Temp Total Time, Power Capability
+
+**EMS extended (12):** Discharge Remaining Time, Charge State/Command, Discharge Command/Condition, Charge Condition, Warning State, Normal Flag, Display SOC (float/LCD), Parallel Voltage Max/Min
+
+**INV extended (5):** AC Work Mode, Charger Type, Discharge Type, Error Code, AC DIP Switch
+
+**MPPT extended (10):** Charge State/Type, Configured Charge Type, Discharge Type, Fault Code, Output Current/Voltage, DC 24V Port State, Screen/Overall Standby Time
+
+**PD extended (17):** DC 12V Temperature, DC 12V/DC Input Use Time, Charger Type, Error Code, RJ45/3.8V/4.8V Port Status, Hysteresis SOC, Inverter/MPPT/USB-C/USB-A/USB QC Use Time, Relay Switch Count, WiFi Auto Recovery, MPPT Beep
+
+**Generator thresholds (2):** Generator Start SOC, Generator Stop SOC
+
+> Most extended/diagnostic sensors are disabled by default. Enable in Settings → Devices & Services → your device → the entity.
+
+### Delta 2 — Sensors (46)
+
+**Battery (14):** Battery Level, SoH, Combined Level, Charging State, Remaining/Full/Design Capacity, Cycles, Temperature, Min/Max Cell Temp, Voltage, Min/Max Cell Voltage
+
+**Power (8):** Total Input/Output, AC Input/Output Power, AC Input/Output Voltage, Solar Input, DC Output
+
+**USB / Type-C (6):** Type-C 1/2, USB 1/2, USB QC 1/2
+
+**Time (3):** Charge/Discharge Remaining, Remaining Time
+
+**Inverter (1):** Inverter Output Temperature
+
+**Slave battery (14):** Mirrors main battery sensors for optional extra battery pack
+
+### Delta 2 Max — Sensors (68)
+
+**Battery (14):** Battery Level, SoH, Combined Level, Remaining/Full/Design Capacity, Cycles, Temperature, Min/Max Cell Temp, Voltage, Min/Max Cell Voltage, Battery Level SOC
+
+**Accumulative energy (2):** Cumulative Charge/Discharge Energy
+
+**Power (6):** Total Input/Output, AC Input/Output Power, AC Input/Output Voltage
+
+**Solar — dual MPPT (7):** Solar 1/2 Input Power/Voltage/Current, DC Output Power
+
+**USB / Type-C (6):** Type-C 1/2, USB 1/2, USB QC 1/2
+
+**Time (2):** Charge/Discharge Remaining
+
+**Inverter (1):** Inverter Output Temperature
+
+**Slave 1 battery (15):** Full mirror including SoH and Battery Level SOC
+
+**Slave 2 battery (15):** Full mirror including SoH and Battery Level SOC
+
+### Gen 1 shared sensors (Delta Pro, Delta Max, Delta Mini)
+
+**Base (34):** Battery Level, Level (precise), SoH, Combined Level, Remaining/Full/Design Capacity, Cycles, Temperature, Min/Max Cell Temp, Current, Voltage, Min/Max Cell Voltage, Total Input/Output, AC Input/Output Power/Voltage, Solar Input Power/Voltage/Current, DC Output Power/Voltage, Type-C 1/2, USB 1/2, USB QC 1/2, Charge/Discharge Remaining
+
+**Energy (5):** Solar Input Energy, AC Charge/Discharge Energy, DC Charge/Discharge Energy
+
+**Slave battery (16 per unit):** Level, Level (precise), SoH, Temp, Voltage, Current, Min/Max Cell Temp/Voltage, Remaining/Full/Design Capacity, Cycles, Input/Output Power
+
+| Device | Base | Extra | Energy | Slaves | Total |
+|--------|------|-------|--------|--------|-------|
+| Delta Pro | 34 | +2 (DC Car, Anderson) | 5 | 2×16 | **57** |
+| Delta Max | 34 | +1 (DC Car) | 5 | 2×16 | **56** |
+| Delta Mini | 34 | +2 (DC Car, Anderson) | 5 | none | **41** |
+
+### River 2 / River 2 Max — Sensors (31)
+
+**Battery (29):** Battery Level, SoH, Combined Level, Charging State, Remaining/Full/Design Capacity, Cycles, Temperature, Min/Max Cell Temp, Voltage, Min/Max Cell Voltage, Total Input/Output, AC Input/Output Power/Voltage, Solar Input Power, DC Output, Type-C, USB 1/2/3, Charge/Discharge Remaining, Inverter Inside/Outside Temp
+
+**DC Solar (2):** DC Solar Input Voltage, DC Solar Input Current
+
+### River 2 Pro — Sensors (29)
+
+Same as River 2 base sensors (29) — no DC solar sensors.
+
+### River Max — Sensors (97), River Pro — Sensors (65), River Mini — Sensors (33)
+
+Detailed sensor lists for Gen 1 River devices. These use the same categories as Gen 1 Delta (battery, power, USB, time) with model-specific variations. River Max includes slave battery support.
+
+### PowerStream — Sensors (21)
+
+**Solar 1 (5):** Watts, Input Voltage, Op Voltage, Current, Temperature
+
+**Solar 2 (5):** Watts, Input Voltage, Op Voltage, Current, Temperature
+
+**Battery (5):** Charge Level, Input Watts, Temperature, Charge/Discharge Time
+
+**Inverter (3):** Output Watts, Frequency, Temperature
+
+**System (3):** ESP Temperature, Other Loads, Rated Power
+
+### Glacier — Sensors (21)
+
+**Battery (14):** Level, Combined Level, Remaining/Full/Design Capacity, Charging State, Input/Output Power, Motor Power, Charge/Discharge Remaining, Cycles, Temperature, Voltage
+
+**Fridge temperatures (5):** Ambient, Exhaust, Water, Left Zone, Right Zone
+
+**Ice maker (2):** Time Remaining, Ice Percentage
+
+### Wave 2 — Sensors (13)
+
+**Battery (5):** Level, Temperature, Remaining Capacity, Charge/Discharge Remaining
+
+**Power (6):** PV Input, Battery Output, PV Charging, AC Input, System Power, Motor Power
+
+**Climate (2):** Set Temperature, Ambient Temperature
 
 ---
 
@@ -206,6 +330,29 @@ logger:
 ---
 
 ## Changelog
+
+### v0.3.2 -- Glacier buttons + Smart Plug + PowerStream sensor fix
+
+**Glacier (BX11) — 3 buttons added:**
+- Make Small Ice, Make Large Ice, Detach Ice (new button platform)
+
+**Smart Plug (SP10) — device profile + commands (16th device):**
+- 5 sensors: Power, Voltage, Current, Temperature, Frequency
+- 1 switch: Power on/off
+- 2 numbers: LED Brightness (0-1023), Max Power (0-2500W)
+- Uses protobuf binary protocol (cmdFunc=2, same envelope as PowerStream)
+- NOTE: sensor telemetry requires protobuf decoder in MQTT handler (commands work, sensors pending)
+
+**PowerStream sensor scaling fix:**
+- All PowerStream sensors now correctly scaled: deciWatts→Watts, deciVolts→Volts, deciAmps→Amps, deciCelsius→Celsius, deciHz→Hz
+- Output Limit number uses state_scale=0.1 so slider and sensor stay in sync
+
+**Infrastructure:**
+- New button platform (button.py) with EcoFlowButtonDescription + JSON command dispatch
+- Added `state_scale` to EcoFlowNumberDescription for numbers where raw MQTT value differs from display unit
+- 3 Smart Plug protobuf command builders in proto_codec.py (switch, brightness, max_watts)
+
+16 devices total. 15 with full control, 1 commands-only pending sensor decoder (Smart Plug).
 
 ### v0.3.1 -- Gen 1 full control + PowerStream, Glacier, Wave 2
 
