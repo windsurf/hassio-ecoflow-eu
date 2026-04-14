@@ -331,6 +331,24 @@ logger:
 
 ## Changelog
 
+### v0.3.3 -- D361 Beep Sound fix + Bypass optimistic + tested live
+
+**Beep Sound fix (D361) -- confirmed working via live test:**
+- Added `inverted=True` -- mppt.beepState=1 means quiet mode ON (sound OFF)
+- Switch now correctly shows ON when sound is actually ON, OFF when muted
+- Command confirmed: quietMode enabled=0 turns sound ON, enabled=1 turns sound OFF
+
+**Bypass (D361) -- confirmed working via live test:**
+- Added `optimistic=True` -- state updates immediately after toggle
+- pd.acAutoOutPause is always 0 in D361 telemetry (confirmed: does not change even via app)
+- Command works: ack=1, relaySwitchCnt increments, app confirms state change
+- Enabled by default (was disabled)
+
+**UPS Mode (D361) -- diagnostic only:**
+- openUpsFlag is firmware-controlled (AC pass-through based on battery state + AC input)
+- Command accepted (ack=1) but not a user-toggleable switch in the EcoFlow app
+- Kept as disabled-by-default diagnostic entity
+
 ### v0.3.2 -- Glacier buttons + Smart Plug + PowerStream sensor fix
 
 **Glacier (BX11) — 3 buttons added:**
@@ -346,6 +364,10 @@ logger:
 **PowerStream sensor scaling fix:**
 - All PowerStream sensors now correctly scaled: deciWatts→Watts, deciVolts→Volts, deciAmps→Amps, deciCelsius→Celsius, deciHz→Hz
 - Output Limit number uses state_scale=0.1 so slider and sensor stay in sync
+
+**Bug fix: bms_slave comma-decimal (v0.2.25 backlog):**
+- Sensors receiving comma-decimal strings (e.g. bms_slave.diffSoc = "1,11") now parse correctly instead of falling back to string state
+- Affects bms_slave.diffSoc, bms_slave.cycSoh, bms_bmsStatus.diffSoc, bms_bmsStatus.cycSoh on Delta 3 1500
 
 **Infrastructure:**
 - New button platform (button.py) with EcoFlowButtonDescription + JSON command dispatch
