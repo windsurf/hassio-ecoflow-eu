@@ -208,7 +208,7 @@ KEY_AC_BYPASS_PAUSE = "pd.acAutoOutPause"              # Bypass paused          
 KEY_MIN_AC_SOC      = "pd.minAcoutSoc"                 # Min SOC for AC auto-on    (%)
 KEY_BP_POWER_SOC    = "pd.bpPowerSoc"                  # Backup Reserve SOC slider (%)
 KEY_BP_IS_CONFIG    = "pd.watchIsConfig"               # Backup Reserve on/off     (0/1) — confirmed via live MQTT
-KEY_OUTPUT_MEMORY   = "pd.outputMemoryEn"              # Output Memory — not in telemetry, no state feedback on D361
+KEY_OUTPUT_MEMORY   = "pd.outputMemoryEn"              # Output Memory — retrieved via getOutputMemory at startup
 KEY_DC12V_IN_W      = "pd.carWatts"                    # DC 12V input power        (W)
 
 # PD extended (v0.2.23)
