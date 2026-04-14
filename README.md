@@ -1,8 +1,8 @@
 # EcoFlow Cloud – Home Assistant Integration
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/release/windsurf/hassio-ecoflow-eu-delta3.svg)](https://github.com/windsurf/hassio-ecoflow-eu-delta3/releases)
-[![Validate](https://github.com/windsurf/hassio-ecoflow-eu-delta3/actions/workflows/validate.yml/badge.svg)](https://github.com/windsurf/hassio-ecoflow-eu-delta3/actions/workflows/validate.yml)
+[![GitHub Release](https://img.shields.io/github/release/windsurf/hassio-ecoflow-eu.svg)](https://github.com/windsurf/hassio-ecoflow-eu/releases)
+[![Validate](https://github.com/windsurf/hassio-ecoflow-eu/actions/workflows/validate.yml/badge.svg)](https://github.com/windsurf/hassio-ecoflow-eu/actions/workflows/validate.yml)
 
 > **Disclaimer:** This software is not affiliated with or endorsed by EcoFlow in any way. It is provided "as-is" without warranty or support, for the educational use of developers and enthusiasts. Use at your own risk.
 
@@ -17,17 +17,17 @@ Real-time monitoring and control of EcoFlow power stations via MQTT. Supports tw
 
 ## Installation via HACS
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=windsurf&repository=hassio-ecoflow-eu-delta3&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=windsurf&repository=hassio-ecoflow-eu&category=integration)
 
 1. Click the button above **or** go to HACS → Integrations → ⋮ → Custom repositories
-2. Add URL: `https://github.com/windsurf/hassio-ecoflow-eu-delta3` — category: **Integration**
+2. Add URL: `https://github.com/windsurf/hassio-ecoflow-eu` — category: **Integration**
 3. Search for **EcoFlow Cloud** and click **Download**
 4. **Restart Home Assistant** (full restart required — not just reload)
 5. Go to **Settings → Devices & Services → Add Integration → EcoFlow Cloud**
 
 ## Manual Installation
 
-1. Download the [latest release](https://github.com/windsurf/hassio-ecoflow-eu-delta3/releases/latest)
+1. Download the [latest release](https://github.com/windsurf/hassio-ecoflow-eu/releases/latest)
 2. Extract and copy `custom_components/ecoflow_cloud/` to your HA `config/custom_components/` directory
 3. **Restart Home Assistant** (full restart — reload integration is not sufficient after code updates)
 
@@ -330,6 +330,35 @@ logger:
 ---
 
 ## Changelog
+
+### v0.3.5 -- Repository rename + device profile verification
+
+**Repository renamed:** `hassio-ecoflow-eu-delta3` → `hassio-ecoflow-eu`
+- All URLs updated: manifest.json, README badges, HACS links, push script
+- GitHub redirects ensure existing installations continue to work
+
+**Device profile verification against official EcoFlow developer docs:**
+- Verified all 10 documented devices against developer-eu.ecoflow.com
+- 9 of 10 devices fully functional, 1 (Delta Pro Ultra) registry-only
+- All core functions (AC/DC control, charge/discharge limits, X-Boost) confirmed correct
+- Protocol formats validated: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobuf
+
+**Verification summary (SET commands coverage):**
+- Delta Pro: 4/6 switches, 4/9 numbers — core complete
+- Delta 2: 8/8 switches, 6/11 numbers — switches complete
+- Delta 2 Max: 7/9 switches, 6/11 numbers — core complete
+- Delta Pro 3: 9/9 switches, 13/16 numbers, 1 button — near-complete
+- Smart Plug: 1/1 switches, 2/2 numbers — fully complete
+- PowerStream: 1/2 switches, 4/4 numbers — numbers complete
+- Wave 2: 4/4 selects, 1/1 numbers — fully complete
+- Glacier: 3/3 switches, 3/3 numbers, 3 buttons — fully complete
+- River 2 Pro: 3/3 switches, 3/3 numbers — fully complete
+- Delta Pro Ultra: not implemented (cmdCode protocol — v0.4.0+ roadmap)
+
+**Cleanup:**
+- `mqtt_listen.ps1` and `test_all_switches.ps1` added to push script SKIP list
+
+19 devices total. All with full control (except Delta Pro Ultra — registry only).
 
 ### v0.3.4 -- Protobuf telemetry decoder (Smart Plug + PowerStream sensors live)
 
