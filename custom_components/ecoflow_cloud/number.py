@@ -44,7 +44,10 @@ from .proto_codec import (
     ps_build_bat_lower,
     ps_build_bat_upper,
     ps_build_brightness,
+    sp_build_brightness as sp_build_brightness_fn,
+    sp_build_max_watts,
 )
+from .devices import smart_plug as sp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +70,9 @@ class EcoFlowNumberDescription(NumberEntityDescription):
     cmd_params_coord_fn: Any = None
     # proto_builder_sn: (value, device_sn) → bytes for protobuf binary commands (PowerStream)
     proto_builder_sn: Any = None
+    # state_scale: multiply raw coordinator value by this factor for display
+    # Use when the MQTT raw value is in a different unit than the slider (e.g. deciWatts → Watts)
+    state_scale:    float = 1.0
     # v0.2.23: read_only=True means the entity is a sensor-like number —
     # state is shown but no SET command is sent (operateType unknown)
     read_only:      bool  = False
@@ -622,6 +628,7 @@ _PS_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
         native_min_value=0, native_max_value=800, native_step=10,
         mode=NumberMode.SLIDER, icon="mdi:transmission-tower-import",
         state_key=ps.KEY_OTHER_LOADS,
+        state_scale=0.1,  # raw value is deciWatts, display in Watts
         proto_builder_sn=lambda v, sn: ps_build_permanent_watts(int(v), sn),
     ),
     EcoFlowNumberDescription(
@@ -669,6 +676,33 @@ NUMBER_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowNumberDescription, ...]] = 
     "Glacier": _GL_NUMBERS,
     "Wave 2": _W2_NUMBERS,
 }
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Smart Plug — 2 numbers (LED Brightness, Max Power)
+# Protobuf binary protocol: cmdFunc=2, cmdId per command
+# NOTE: sensor telemetry requires protobuf decoder (not yet implemented)
+# ══════════════════════════════════════════════════════════════════════════════
+
+_SP_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
+    EcoFlowNumberDescription(
+        key="led_brightness", name="LED Brightness",
+        native_min_value=0, native_max_value=1023, native_step=1,
+        mode=NumberMode.SLIDER, icon="mdi:brightness-6",
+        state_key=sp.KEY_BRIGHTNESS,
+        proto_builder_sn=lambda v, sn: sp_build_brightness_fn(int(v), sn),
+    ),
+    EcoFlowNumberDescription(
+        key="max_power", name="Max Power",
+        native_unit_of_measurement="W",
+        native_min_value=0, native_max_value=2500, native_step=10,
+        mode=NumberMode.SLIDER, icon="mdi:flash-alert",
+        state_key=sp.KEY_MAX_WATTS,
+        proto_builder_sn=lambda v, sn: sp_build_max_watts(int(v), sn),
+    ),
+)
+
+# ── Merged registry ──────────────────────────────────────────────────────────
+NUMBER_DESCRIPTIONS_BY_MODEL["Smart Plug"] = _SP_NUMBERS
 
 
 def _get_number_descriptions(model: str) -> tuple[EcoFlowNumberDescription, ...]:
@@ -743,7 +777,10 @@ class EcoFlowNumberEntity(CoordinatorEntity[EcoflowCoordinator], NumberEntity):
             return float(raw)
 
         try:
-            return float(val) if val is not None else None
+            raw = float(val) if val is not None else None
+            if raw is not None and self.entity_description.state_scale != 1.0:
+                raw = raw * self.entity_description.state_scale
+            return raw
         except (TypeError, ValueError):
             return None
 
