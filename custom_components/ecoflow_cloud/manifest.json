@@ -6,11 +6,11 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/windsurf/hassio-ecoflow-eu-delta3",
+  "documentation": "https://github.com/windsurf/hassio-ecoflow-eu",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/windsurf/hassio-ecoflow-eu-delta3/issues",
+  "issue_tracker": "https://github.com/windsurf/hassio-ecoflow-eu/issues",
   "requirements": [
     "paho-mqtt>=1.6.1"
   ],
-  "version": "0.3.4"
+  "version": "0.3.5"
 }
