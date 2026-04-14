@@ -39,9 +39,11 @@ from .proto_codec import (
     build_beep,
     build_ups_mode,
     ps_build_feed_protect,
+    sp_build_switch,
 )
 from .devices import glacier as gl
 from .devices import powerstream as ps
+from .devices import smart_plug as sp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -586,6 +588,20 @@ _PS_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
     ),
 )
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Smart Plug — 1 switch (Power on/off)
+# Protobuf binary protocol: cmdFunc=2, cmdId=129
+# NOTE: sensor telemetry requires protobuf decoder (not yet implemented)
+# ══════════════════════════════════════════════════════════════════════════════
+
+_SP_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="power", name="Power", icon="mdi:power-plug",
+        state_key=sp.KEY_SWITCH_STA,
+        proto_builder_sn=lambda on, sn: sp_build_switch(on, sn),
+    ),
+)
+
 # ── Description registry — keyed by device model ─────────────────────────────
 SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = {
     "Delta 3 1500": _D361_SWITCHES,
@@ -605,6 +621,7 @@ SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = 
     "PowerStream 800W": _PS_SWITCHES,
     "Glacier": _GL_SWITCHES,
     "Wave 2": (),  # no switches (tolwi confirms empty)
+    "Smart Plug": _SP_SWITCHES,
 }
 
 
