@@ -307,6 +307,71 @@ def ps_build_feed_protect(enabled: bool, device_sn: str) -> bytes:
     return _ps_wrap(PS_CMD_FEED_PROTECT, pdata, device_sn)
 
 
+# ---------------------------------------------------------------------------
+# Smart Plug protobuf command builders
+# ---------------------------------------------------------------------------
+#
+# Smart Plug uses the same envelope structure as PowerStream but with:
+#   cmdFunc = 2 (CMD_FUNC_WN_SMART_PLUG)
+#   src = 32 (APP), dest = 53 (MQTT)
+#
+# Source: tolwi/smartplug.proto + internal/smart_plug.py
+#
+# Command IDs (cmdFunc=2 for all):
+#   129 = switch on/off (WnPlugSwitchMessage: field 1 = bool)
+#   130 = brightness (WnBrightnessPack: field 1 = int32)
+#   137 = max watts (WnMaxWattsPack: field 1 = int32)
+
+SP_CMD_FUNC      = 2
+SP_CMD_SWITCH    = 129
+SP_CMD_BRIGHTNESS = 130
+SP_CMD_MAX_WATTS = 137
+
+
+def _sp_header(cmd_id: int, pdata: bytes, device_sn: str) -> bytes:
+    """Build a SmartPlugHeader protobuf message."""
+    seq = _ts()
+    header = (
+        _fb(1, pdata) +             # pdata
+        _fv(2, _PS_SRC_APP) +       # src = APP (32)
+        _fv(3, _PS_DEST_MQTT) +     # dest = MQTT (53)
+        _fv(8, SP_CMD_FUNC) +       # cmdFunc = 2
+        _fv(9, cmd_id) +            # cmdId
+        _fv(10, len(pdata)) +       # dataLen
+        _fv(11, 1) +                # needAck
+        _fv(14, seq) +              # seq (timestamp)
+        _fs(25, device_sn)           # deviceSn
+    )
+    return header
+
+
+def _sp_wrap(cmd_id: int, pdata: bytes, device_sn: str) -> bytes:
+    """Wrap a Smart Plug command in SendSmartPlugHeaderMsg (repeated field 1)."""
+    header = _sp_header(cmd_id, pdata, device_sn)
+    return _fb(1, header)
+
+
+def sp_build_switch(enabled: bool, device_sn: str) -> bytes:
+    """Switch Smart Plug ON/OFF."""
+    # WnPlugSwitchMessage: field 1 = bool (varint 0/1)
+    pdata = _fv(1, 1 if enabled else 0)
+    return _sp_wrap(SP_CMD_SWITCH, pdata, device_sn)
+
+
+def sp_build_brightness(level: int, device_sn: str) -> bytes:
+    """Set Smart Plug LED brightness (0–1023)."""
+    level = max(0, min(1023, int(level)))
+    pdata = _fv(1, level)
+    return _sp_wrap(SP_CMD_BRIGHTNESS, pdata, device_sn)
+
+
+def sp_build_max_watts(watts: int, device_sn: str) -> bytes:
+    """Set Smart Plug max power limit (0–2500W)."""
+    watts = max(0, min(2500, int(watts)))
+    pdata = _fv(1, watts)
+    return _sp_wrap(SP_CMD_MAX_WATTS, pdata, device_sn)
+
+
 
 
 # ---------------------------------------------------------------------------
