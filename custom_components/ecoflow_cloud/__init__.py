@@ -29,7 +29,7 @@ from .devices.registry import detect_model
 from .proto_codec import dump_fields
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
+PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT, Platform.BUTTON]
 
 # v0.2.19: Delta 3 expects JSON GET (latestQuotas) on /get topic — NOT protobuf.
 # APP sends after connect: latestQuotas + getBmsInfo + getAllTaskCfg + setRtcTime.
