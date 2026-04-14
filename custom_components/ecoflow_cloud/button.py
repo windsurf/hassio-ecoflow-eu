@@ -26,6 +26,7 @@ class EcoFlowButtonDescription(ButtonEntityDescription):
     cmd_module:  int  = 0
     cmd_operate: str  = ""
     cmd_params:  Any  = None   # static dict or callable() → dict
+    dp3_cmd_key: str  = ""     # if set, use Delta Pro 3 command envelope
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -52,9 +53,24 @@ _GL_BUTTONS: tuple[EcoFlowButtonDescription, ...] = (
     ),
 )
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta Pro 3 (DGEA) — Power Off button
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta_pro_3 as dp3_btn
+
+_DP3_BUTTONS: tuple[EcoFlowButtonDescription, ...] = (
+    EcoFlowButtonDescription(
+        key="dp3_power_off", name="Power Off", icon="mdi:power-off",
+        dp3_cmd_key=dp3_btn.CMD_POWER_OFF,
+    ),
+)
+
 # ── Description registry — keyed by device model ─────────────────────────────
 BUTTON_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowButtonDescription, ...]] = {
     "Delta 3 1500": (),
+    "Delta 3 Plus": (),
+    "Delta 3 Max": (),
     "Delta 2": (),
     "Delta 2 Max": (),
     "Delta Pro": (),
@@ -72,7 +88,22 @@ BUTTON_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowButtonDescription, ...]] = 
     "Glacier": _GL_BUTTONS,
     "Wave 2": (),
     "Smart Plug": (),  # no buttons
+    "Delta Pro 3": _DP3_BUTTONS,
 }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta Pro 3 (DGEA) — Power Off button
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta_pro_3 as dp3_btn
+
+_DP3_BUTTONS: tuple[EcoFlowButtonDescription, ...] = (
+    EcoFlowButtonDescription(
+        key="dp3_power_off", name="Power Off", icon="mdi:power-off",
+        dp3_cmd_key=dp3_btn.CMD_POWER_OFF,
+    ),
+)
 
 
 def _get_button_descriptions(model: str) -> tuple[EcoFlowButtonDescription, ...]:
@@ -155,6 +186,26 @@ class EcoFlowButtonEntity(CoordinatorEntity[EcoflowCoordinator], ButtonEntity):
         topic  = self._entry_data.get("mqtt_topic_set")
         if not client or not topic:
             _LOGGER.error("EcoFlow: no MQTT client — cannot send button %s command", desc.key)
+            return
+
+        # Priority 2.5: Delta Pro 3 envelope
+        if desc.dp3_cmd_key:
+            from .devices.delta_pro_3 import DP3_CMD_ID, DP3_CMD_FUNC, DP3_DEST, DP3_DIR_DEST, DP3_DIR_SRC
+            cmd = {
+                "sn":       self._sn,
+                "id":       _next_id(),
+                "version":  "1.0",
+                "cmdId":    DP3_CMD_ID,
+                "dirDest":  DP3_DIR_DEST,
+                "dirSrc":   DP3_DIR_SRC,
+                "cmdFunc":  DP3_CMD_FUNC,
+                "dest":     DP3_DEST,
+                "needAck":  True,
+                "params":   {desc.dp3_cmd_key: True},
+            }
+            _LOGGER.info("EcoFlow: DP3 button %s topic=%s key=%s", desc.key, topic, desc.dp3_cmd_key)
+            result = client.publish(topic, json.dumps(cmd), qos=1)
+            _LOGGER.debug("EcoFlow: DP3 button publish mid=%s rc=%s", result.mid, result.rc)
             return
 
         cmd = {
