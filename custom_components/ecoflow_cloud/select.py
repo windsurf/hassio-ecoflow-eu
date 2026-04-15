@@ -317,6 +317,35 @@ SELECT_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSelectDescription, ...]] = 
     "Smart Plug": (),  # no selects
 }
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta Pro Ultra (DGEB) — Operating Mode select
+# Source: EcoFlow Developer docs (deltaProUltra), sysWordMode: 0-3
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta_pro_ultra as dpu_sel
+
+_DPU_SELECTS: tuple[EcoFlowSelectDescription, ...] = (
+    EcoFlowSelectDescription(
+        key="dpu_operating_mode",
+        name="Operating Mode",
+        icon="mdi:cog",
+        state_key=dpu_sel.KEY_SYS_WORD_MODE,
+        options_map={
+            "Default":       0,
+            "Self-powered":  1,
+            "Scheduled":     2,
+            "TOU":           3,
+        },
+        # No dedicated SET cmdCode for sysWordMode in docs — read-only select
+        entity_registry_enabled_default=False,
+    ),
+)
+
+SELECT_DESCRIPTIONS_BY_MODEL["Delta Pro Ultra"] = _DPU_SELECTS
+SELECT_DESCRIPTIONS_BY_MODEL["Delta Pro 3"] = ()
+SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Plus"] = _D361_SELECTS
+SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Max"] = _D361_SELECTS
+
 
 def _get_select_descriptions(model: str) -> tuple[EcoFlowSelectDescription, ...]:
     """Get select descriptions for a device model. Falls back to empty tuple."""
