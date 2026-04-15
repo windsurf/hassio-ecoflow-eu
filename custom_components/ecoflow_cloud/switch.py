@@ -73,6 +73,14 @@ class EcoFlowSwitchDescription(SwitchEntityDescription):
     # dp3_cmd_key: if set, use Delta Pro 3 command envelope format
     # {sn, cmdId:17, cmdFunc:254, dest:2, dirDest:1, dirSrc:1, needAck:true, params:{dp3_cmd_key: value}}
     dp3_cmd_key:  str                        = ""
+    # dpu_cmd_code: if set, use Delta Pro Ultra cmdCode format
+    # REST: {sn, cmdCode:"YJ751_PD_*", params:{...}}
+    # MQTT: {id, version:"1.0", cmdCode:"YJ751_PD_*", params:{...}}
+    dpu_cmd_code:   str                      = ""
+    dpu_cmd_params: Any                      = None   # callable(on: bool) → dict, or None for simple {param: 0/1}
+    # show_flag_bit: if >= 0, extract this bit from the state_key value for is_on
+    # Used by DPU where showFlag is a bit field (e.g. bit 2 = AC, bit 5 = DC)
+    show_flag_bit:  int                      = -1
 
 
 
@@ -707,6 +715,83 @@ SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = 
     "Delta Pro 3": _DP3_SWITCHES,
 }
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta Pro Ultra (DGEB) — cmdCode protocol (YJ751_PD_*)
+# Source: EcoFlow Developer docs (deltaProUltra), 14 April 2026, 18 pages
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta_pro_ultra as dpu
+
+_DPU_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="dpu_ac_output", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=dpu.KEY_SHOW_FLAG,
+        show_flag_bit=2,             # bit 2 (3rd digit right-to-left) = AC output
+        dpu_cmd_code=dpu.CMD_AC_DSG,
+        # AC_DSG is a combined command — preserve current xboost and freq
+        # cmd_params_fn cannot read coordinator; use static defaults as fallback
+        # Real values are read via coordinator-aware path in _publish override
+        dpu_cmd_params=lambda on: {
+            dpu.PARAM_AC_ENABLE:   1 if on else 0,
+            dpu.PARAM_AC_XBOOST:   255,      # 255 = keep current (EcoFlow convention)
+            dpu.PARAM_AC_OUT_FREQ: 255,      # 255 = keep current
+        },
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="dpu_xboost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=dpu.KEY_AC_XBOOST,
+        dpu_cmd_code=dpu.CMD_AC_DSG,
+        dpu_cmd_params=lambda on: {
+            dpu.PARAM_AC_ENABLE:   255,      # 255 = keep current
+            dpu.PARAM_AC_XBOOST:   1 if on else 0,
+            dpu.PARAM_AC_OUT_FREQ: 255,      # 255 = keep current
+        },
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="dpu_dc_output", name="DC Output", icon="mdi:car-battery",
+        state_key=dpu.KEY_SHOW_FLAG,
+        show_flag_bit=5,             # bit 5 (6th digit right-to-left) = DC output
+        dpu_cmd_code=dpu.CMD_DC_SWITCH,
+        dpu_cmd_params=lambda on: {dpu.PARAM_DC_ENABLE: 1 if on else 0},
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="dpu_bp_heat", name="Battery Heating", icon="mdi:radiator",
+        state_key=dpu.KEY_BMS_MODE_SET,
+        dpu_cmd_code=dpu.CMD_BP_HEAT,
+        dpu_cmd_params=lambda on: {dpu.PARAM_BP_HEAT: 1 if on else 0},
+        optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="dpu_4g", name="4G Switch", icon="mdi:signal-4g",
+        state_key=dpu.KEY_4G_ON,
+        dpu_cmd_code=dpu.CMD_4G_SWITCH,
+        dpu_cmd_params=lambda on: {dpu.PARAM_4G_OPEN: 1 if on else 0},
+        optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="dpu_ac_always_on", name="AC Always-On", icon="mdi:power-plug",
+        state_key=dpu.KEY_AC_OFTEN_OPEN,
+        dpu_cmd_code=dpu.CMD_AC_OFTEN_OPEN,
+        dpu_cmd_params=lambda on: {dpu.PARAM_AC_OFTEN_OPEN: 1 if on else 0},
+        optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="dpu_energy_manage", name="Energy Management", icon="mdi:flash-auto",
+        state_key=dpu.KEY_ENERGY_MANAGE_EN,
+        # No SET cmdCode in docs — read-only switch (state from telemetry)
+        optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+)
+
+SWITCH_DESCRIPTIONS_BY_MODEL["Delta Pro Ultra"] = _DPU_SWITCHES
+
 
 def _get_switch_descriptions(model: str) -> tuple[EcoFlowSwitchDescription, ...]:
     """Get switch descriptions for a device model. Falls back to empty tuple."""
@@ -766,7 +851,14 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
         val = self.coordinator.data.get(self.entity_description.state_key)
         if val is None:
             return None
-        active = int(val) == 1
+        # DPU showFlag: extract specific bit from integer bit field
+        if self.entity_description.show_flag_bit >= 0:
+            try:
+                active = (int(val) >> self.entity_description.show_flag_bit) & 1 == 1
+            except (TypeError, ValueError):
+                return None
+        else:
+            active = int(val) == 1
         return (not active) if self.entity_description.inverted else active
 
     @property
@@ -839,6 +931,46 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             )
             result = client.publish(topic, json.dumps(cmd), qos=1)
             _LOGGER.debug("EcoFlow: DP3 publish mid=%s rc=%s", result.mid, result.rc)
+            return
+
+        # Priority 2.6: Delta Pro Ultra cmdCode format
+        if desc.dpu_cmd_code:
+            # Priority 2.6a: REST API SET with cmdCode
+            rest_api = self._entry_data.get("rest_api")
+            if rest_api is not None and hasattr(rest_api, 'set_quota_cmdcode'):
+                params = desc.dpu_cmd_params(turn_on) if desc.dpu_cmd_params else {}
+                try:
+                    rest_api.set_quota_cmdcode(desc.dpu_cmd_code, params)
+                    _LOGGER.info(
+                        "EcoFlow: DPU REST SET %s turn_on=%s cmdCode=%s params=%s",
+                        desc.key, turn_on, desc.dpu_cmd_code, params,
+                    )
+                    return
+                except Exception as exc:
+                    _LOGGER.debug(
+                        "EcoFlow: DPU REST SET %s failed (%s) — falling back to MQTT",
+                        desc.key, exc,
+                    )
+
+            # Priority 2.6b: MQTT SET with cmdCode
+            client = self._entry_data.get("mqtt_client")
+            topic  = self._entry_data.get("mqtt_topic_set")
+            if not client or not topic:
+                _LOGGER.error("EcoFlow: no MQTT client — cannot send DPU %s command", desc.key)
+                return
+            params = desc.dpu_cmd_params(turn_on) if desc.dpu_cmd_params else {}
+            cmd = {
+                "id":       _next_id(),
+                "version":  "1.0",
+                "cmdCode":  desc.dpu_cmd_code,
+                "params":   params,
+            }
+            _LOGGER.info(
+                "EcoFlow: DPU SET %s turn_on=%s topic=%s cmdCode=%s params=%s",
+                desc.key, turn_on, topic, desc.dpu_cmd_code, params,
+            )
+            result = client.publish(topic, json.dumps(cmd), qos=1)
+            _LOGGER.debug("EcoFlow: DPU publish mid=%s rc=%s", result.mid, result.rc)
             return
 
         # Priority 3: JSON MQTT SET
