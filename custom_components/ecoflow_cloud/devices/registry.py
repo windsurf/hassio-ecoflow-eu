@@ -2,7 +2,7 @@
 
 Usage:
     from .devices.registry import detect_model
-    model = detect_model("D361ZEH49GAR0848")
+    model = detect_model("D361XXXXXXXXXXX")
     # returns "Delta 3 1500"
 
 When a SN prefix is unknown, returns "Unknown EcoFlow Device".
