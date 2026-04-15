@@ -1,6 +1,6 @@
 """Device definition for EcoFlow Delta Pro 3.
 
-SN prefix: DGEA (confirmed via EcoFlow developer docs, SN example: MR51ZAS2PG330026)
+SN prefix: DGEA (confirmed via EcoFlow developer docs)
 
 Protocol: Delta Pro 3 uses a DIFFERENT command format than Delta 2/3:
   - Command envelope: {sn, cmdId:17, cmdFunc:254, dest:2, dirDest:1, dirSrc:1, needAck:true, params:{...}}
