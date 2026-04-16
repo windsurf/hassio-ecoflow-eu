@@ -360,6 +360,36 @@ logger:
 
 ## Changelog
 
+### v0.3.7 -- River 3/3 Plus + DPU showFlag + AC DSG fix
+
+**New devices: River 3 (R641) and River 3 Plus (R651):**
+- Gen 3 protocol (cmdFunc=254) — same command envelope as Delta Pro 3
+- New device file: `devices/river3.py` with flat quota keys from community MQTT data
+- 20 sensors: SOC, SOH, total power in/out, per-port power (AC, USB, Type-C, 12V, PV), temperatures, settings readback
+- 6 switches: AC Output, DC 12V, X-Boost, Beep, Output Memory, Energy Backup
+- 7 numbers: Max/Min SOC, Device/Screen/AC standby, AC charging power, Solar max current
+- Source: foxthefox/ioBroker.ecoflow-mqtt river3plus.md (community-confirmed via live MQTT)
+
+**Switch `is_on` fix for River 3 flow keys:**
+- River 3 uses `0=off, 2=on` for flow status keys (not `0/1` like other devices)
+- Changed `is_on` from `int(val) == 1` to `int(val) != 0` — covers both conventions safely
+
+**DPU switches now use telemetry-confirmed state instead of optimistic updates:**
+- AC Output (bit 2), DC Output (bit 5), Battery Heating (bit 1) read actual state from `showFlag` bit field
+- Removed `optimistic=True` from these three switches — state updates arrive via MQTT telemetry push
+- Battery Heating moved from `bmsModeSet` quota key to `showFlag` with `inverted=True` (bit 1: 0=enabled, 1=prohibited)
+
+**New named constants in `delta_pro_ultra.py`:**
+- `SHOW_FLAG_BIT_HEAT = 1`, `SHOW_FLAG_BIT_AC = 2`, `SHOW_FLAG_BIT_DC = 5`
+- Replaced magic numbers in switch definitions with named constants
+- Removed unused `extract_show_flag_bit()` helper function (logic is inline in `is_on` property)
+
+**AC DSG combined command: read current values from coordinator:**
+- `YJ751_PD_AC_DSG_SET` sends enable + xboost + freq in one command
+- Now reads actual `acXboost` and `acOutFreq` from coordinator data instead of 255 sentinel
+
+**Device count:** 22 devices total (20 previous + River 3 + River 3 Plus). All with full control.
+
 ### v0.3.6 -- Delta Pro Ultra full implementation (cmdCode protocol)
 
 **New device: Delta Pro Ultra (DGEB) — fully implemented:**
