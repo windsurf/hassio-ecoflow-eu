@@ -345,6 +345,8 @@ SELECT_DESCRIPTIONS_BY_MODEL["Delta Pro Ultra"] = _DPU_SELECTS
 SELECT_DESCRIPTIONS_BY_MODEL["Delta Pro 3"] = ()
 SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Plus"] = _D361_SELECTS
 SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Max"] = _D361_SELECTS
+SELECT_DESCRIPTIONS_BY_MODEL["River 3"] = ()
+SELECT_DESCRIPTIONS_BY_MODEL["River 3 Plus"] = ()
 
 
 def _get_select_descriptions(model: str) -> tuple[EcoFlowSelectDescription, ...]:
