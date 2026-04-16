@@ -90,6 +90,8 @@ BUTTON_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowButtonDescription, ...]] = 
     "Smart Plug": (),  # no buttons
     "Delta Pro 3": _DP3_BUTTONS,
     "Delta Pro Ultra": (),  # no button commands in DPU developer docs
+    "River 3": (),          # no button commands in community docs
+    "River 3 Plus": (),     # no button commands in community docs
 }
 
 
