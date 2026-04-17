@@ -37,6 +37,7 @@ Operate codes (gist + foxthefox analysis):
 """
 from __future__ import annotations
 
+import struct
 import time
 from typing import Optional
 
@@ -372,6 +373,164 @@ def sp_build_max_watts(watts: int, device_sn: str) -> bytes:
     return _sp_wrap(SP_CMD_MAX_WATTS, pdata, device_sn)
 
 
+# ---------------------------------------------------------------------------
+# Stream AC / AC Pro / Ultra protobuf command builders
+# ---------------------------------------------------------------------------
+#
+# The Stream AC family uses the same Delta 3 protobuf envelope (cmdFunc=254)
+# but with different inner field numbers mapped to the ConfigWrite schema.
+#
+# Envelope (setMessage > setHeader):
+#   src=32, dest=2, dSrc=1, dDest=1, cmdFunc=254, cmdId=17
+#   productId=56, version=3, payloadVer=1
+#
+# The ConfigWrite pdata always includes cfgUtcTime (field 6) as a timestamp.
+# Additional fields depend on the command.
+#
+# Source: foxthefox/ioBroker.ecoflow-mqtt ef_stream_inverter_data.js prepareProtoCmd
+#
+
+from .devices.stream_ac import (
+    CMD_UTC_TIME_FIELD, CMD_RELAY2_FIELD, CMD_RELAY3_FIELD,
+    CMD_MAX_CHG_SOC_FIELD, CMD_MIN_DSG_SOC_FIELD, CMD_BACKUP_SOC_FIELD,
+    CMD_FEED_LIMIT_FIELD, CMD_BRIGHTNESS_FIELD,
+)
+
+# Stream AC envelope constants (same as Delta 3 but with productId/version)
+_STREAM_SRC     = 32
+_STREAM_DEST    = 2
+_STREAM_D_SRC   = 1
+_STREAM_D_DEST  = 1
+_STREAM_CMD_FUNC = 254
+_STREAM_CMD_ID  = 17
+
+
+def _stream_wrap_cmd(pdata_fields: bytes) -> bytes:
+    """Wrap ConfigWrite pdata in Stream AC setMessage protobuf envelope.
+
+    Structure (from foxthefox prepareProtoCmd):
+        setMessage {
+          header {                  (field 1 = LEN)
+            pdata: ConfigWrite      (field 1 = LEN)
+            src: 32                 (field 2)
+            dest: 2                 (field 3)
+            dSrc: 1                 (field 4)
+            dDest: 1                (field 5)
+            cmdFunc: 254            (field 8)
+            cmdId: 17               (field 9)
+            dataLen: <len>          (field 10)
+            needAck: 1              (field 11)
+            seq: <timestamp_ms>     (field 14)
+            productId: 56           (field 15)
+            version: 3              (field 16)
+            payloadVer: 1           (field 17)
+            from: "Android"         (field 23)
+          }
+        }
+    """
+    seq = int(time.time() * 1000) & 0xFFFFFFFF  # milliseconds
+    header = (
+        _fb(1, pdata_fields) +
+        _fv(2, _STREAM_SRC) +
+        _fv(3, _STREAM_DEST) +
+        _fv(4, _STREAM_D_SRC) +
+        _fv(5, _STREAM_D_DEST) +
+        _fv(8, _STREAM_CMD_FUNC) +
+        _fv(9, _STREAM_CMD_ID) +
+        _fv(10, len(pdata_fields)) +
+        _fv(11, 1) +
+        _fv(14, seq) +
+        _fv(15, 56) +              # productId
+        _fv(16, 3) +               # version
+        _fv(17, 1) +               # payloadVer
+        _fs(23, "Android")
+    )
+    return _fb(1, header)
+
+
+def _stream_pdata_with_timestamp(*field_pairs: tuple[int, int]) -> bytes:
+    """Build ConfigWrite pdata with cfgUtcTime + additional fields.
+
+    Always includes cfgUtcTime (field 6) as unix timestamp.
+    Additional fields are (field_num, value) tuples.
+    """
+    ts = int(time.time()) & 0xFFFFFFFF
+    pdata = _fv(CMD_UTC_TIME_FIELD, ts)
+    for field_num, value in field_pairs:
+        pdata += _fv(field_num, int(value))
+    return pdata
+
+
+def stream_build_relay2(enabled: bool) -> bytes:
+    """Toggle AC output relay #1 (relay2Onoff) — ConfigWrite field 380."""
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_RELAY2_FIELD, 1 if enabled else 0),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
+def stream_build_relay3(enabled: bool) -> bytes:
+    """Toggle AC output relay #2 (relay3Onoff) — ConfigWrite field 381."""
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_RELAY3_FIELD, 1 if enabled else 0),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
+def stream_build_max_chg_soc(soc: int, current_min_dsg_soc: int = 5) -> bytes:
+    """Set max charge SOC (%) — ConfigWrite fields 33 + 34.
+
+    Both cmsMaxChgSoc and cmsMinDsgSoc must be sent together
+    (foxthefox: dataLen=12, both fields required).
+    """
+    soc = max(5, min(100, int(soc)))
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_MAX_CHG_SOC_FIELD, soc),
+        (CMD_MIN_DSG_SOC_FIELD, int(current_min_dsg_soc)),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
+def stream_build_min_dsg_soc(soc: int, current_max_chg_soc: int = 100) -> bytes:
+    """Set min discharge SOC (%) — ConfigWrite fields 34 + 33.
+
+    Both cmsMinDsgSoc and cmsMaxChgSoc must be sent together.
+    """
+    soc = max(0, min(30, int(soc)))
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_MAX_CHG_SOC_FIELD, int(current_max_chg_soc)),
+        (CMD_MIN_DSG_SOC_FIELD, soc),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
+def stream_build_backup_soc(soc: int) -> bytes:
+    """Set backup reserve SOC (%) — ConfigWrite field 102."""
+    soc = max(0, min(100, int(soc)))
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_BACKUP_SOC_FIELD, soc),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
+def stream_build_feed_limit(watts: int) -> bytes:
+    """Set grid feed-in power limit (W) — ConfigWrite field 169."""
+    watts = max(0, min(800, int(watts)))
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_FEED_LIMIT_FIELD, watts),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
+def stream_build_brightness(level: int) -> bytes:
+    """Set display brightness — ConfigWrite field 384."""
+    level = max(0, min(100, int(level)))
+    pdata = _stream_pdata_with_timestamp(
+        (CMD_BRIGHTNESS_FIELD, level),
+    )
+    return _stream_wrap_cmd(pdata)
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -560,14 +719,42 @@ _HEARTBEAT_DECODERS: dict[int, dict[int, str]] = {
 _CMD_FUNC_NAMES: dict[int, str] = {
     20: "PowerStream",
     2:  "SmartPlug",
+    254: "StreamAC",
+}
+
+# Stream AC uses cmdFunc=254 with multiple cmdIds for different message types.
+# We need a (cmdFunc, cmdId) → field_map lookup for these.
+from .devices.stream_ac import DISPLAY_FIELDS as _SA_DISPLAY_FIELDS
+from .devices.stream_ac import RUNTIME_FIELDS as _SA_RUNTIME_FIELDS
+from .devices.stream_ac import FLOAT_FIELDS as _SA_FLOAT_FIELDS
+from .devices.stream_ac import CONFIG_ACK_FIELDS as _SA_CONFIG_ACK_FIELDS
+
+# (cmdFunc, cmdId) → (field_map, float_fields_set)
+_STREAM_AC_DECODERS: dict[tuple[int, int], tuple[dict[int, str], set[int]]] = {
+    (254, 21): (_SA_DISPLAY_FIELDS, _SA_FLOAT_FIELDS),    # DisplayPropertyUpload
+    (254, 22): (_SA_RUNTIME_FIELDS, set()),                # RuntimePropertyUpload
+    (254, 18): (_SA_CONFIG_ACK_FIELDS, set()),             # ConfigWriteAck — confirms SET values
 }
 
 
-def decode_proto_telemetry(raw: bytes) -> dict[str, int] | None:
+def _decode_float_bits(raw_int: int) -> float:
+    """Convert raw 32-bit integer (from wire type 5) to IEEE 754 float."""
+    try:
+        return struct.unpack('<f', struct.pack('<I', raw_int & 0xFFFFFFFF))[0]
+    except (struct.error, OverflowError):
+        return 0.0
+
+
+def decode_proto_telemetry(raw: bytes) -> dict[str, int | float] | None:
     """Decode a protobuf telemetry message into coordinator-compatible dict.
 
     Returns {coordinator_key: value} for known heartbeat messages.
     Returns None if the message is not a recognized heartbeat or cannot be parsed.
+
+    Supports:
+      - PowerStream (cmdFunc=20, all cmdIds)
+      - Smart Plug (cmdFunc=2, all cmdIds)
+      - Stream AC (cmdFunc=254, cmdId=21 DisplayPropertyUpload, cmdId=22 RuntimePropertyUpload)
     """
     header = _extract_header(raw)
     if header is None:
@@ -579,6 +766,13 @@ def decode_proto_telemetry(raw: bytes) -> dict[str, int] | None:
     pdata = header["pdata"]
     device_name = _CMD_FUNC_NAMES.get(cmd_func, f"unknown(func={cmd_func})")
 
+    # Check Stream AC decoders first (cmdFunc=254 with specific cmdIds)
+    stream_decoder = _STREAM_AC_DECODERS.get((cmd_func, cmd_id))
+    if stream_decoder is not None:
+        field_map, float_fields = stream_decoder
+        return _decode_stream_pdata(pdata, field_map, float_fields, device_name, cmd_id)
+
+    # Fall back to simple cmdFunc-based decoders (PowerStream, Smart Plug)
     field_map = _HEARTBEAT_DECODERS.get(cmd_func)
     if field_map is None:
         _DECODE_LOGGER.debug(
@@ -599,6 +793,51 @@ def decode_proto_telemetry(raw: bytes) -> dict[str, int] | None:
         key = field_map.get(field_num)
         if key:
             result[key] = value
+        else:
+            unmapped.append(field_num)
+
+    if result:
+        _DECODE_LOGGER.debug(
+            "proto decode OK: %s cmd_id=%d → %d keys mapped, %d unmapped %s",
+            device_name, cmd_id, len(result), len(unmapped),
+            unmapped[:10] if unmapped else "",
+        )
+    else:
+        _DECODE_LOGGER.debug(
+            "proto decode: %s cmd_id=%d — pdata has %d fields but none mapped",
+            device_name, cmd_id, len(pdata_fields),
+        )
+        return None
+
+    return result
+
+
+def _decode_stream_pdata(
+    pdata: bytes,
+    field_map: dict[int, str],
+    float_fields: set[int],
+    device_name: str,
+    cmd_id: int,
+) -> dict[str, int | float] | None:
+    """Decode Stream AC pdata with float-aware field mapping.
+
+    Stream AC proto uses both varint (uint32/int32) and 32-bit fixed (float)
+    wire types.  Fields listed in float_fields are decoded as IEEE 754 float;
+    all others are kept as int.
+    """
+    pdata_fields = _parse_fields(pdata)
+
+    result: dict[str, int | float] = {}
+    unmapped: list[int] = []
+    for field_num, raw_value in pdata_fields.items():
+        if not isinstance(raw_value, int):
+            continue  # skip nested LEN fields (bytes)
+        key = field_map.get(field_num)
+        if key:
+            if field_num in float_fields:
+                result[key] = round(_decode_float_bits(raw_value), 2)
+            else:
+                result[key] = raw_value
         else:
             unmapped.append(field_num)
 
@@ -668,6 +907,20 @@ def dump_fields(data: bytes, depth: int = 0, max_depth: int = 3) -> str:
                     lines.append(nested)
                 else:
                     lines.append(f"{indent}f{field_num}(LEN {length:4d}): {hex_str}")
+            elif wire_type == 5:      # 32-bit fixed (float or fixed32)
+                raw = data[pos:pos + 4]
+                pos += 4
+                int_val = int.from_bytes(raw, "little")
+                try:
+                    float_val = struct.unpack('<f', raw)[0]
+                    lines.append(f"{indent}f{field_num}(F32 {float_val:8.2f}  raw=0x{int_val:08x})")
+                except (struct.error, OverflowError):
+                    lines.append(f"{indent}f{field_num}(F32 raw=0x{int_val:08x})")
+            elif wire_type == 1:      # 64-bit fixed
+                raw = data[pos:pos + 8]
+                pos += 8
+                int_val = int.from_bytes(raw, "little")
+                lines.append(f"{indent}f{field_num}(F64 raw=0x{int_val:016x})")
             else:
                 lines.append(f"{indent}  <wire_type {wire_type} unknown, stop>")
                 break
