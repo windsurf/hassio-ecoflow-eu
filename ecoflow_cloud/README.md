@@ -329,20 +329,22 @@ logger:
 
 ---
 
-## Device Support (v0.3.6)
+## Device Support (v0.3.9)
 
 | Device | SN Prefix | Protocol | Sensors | Switches | Numbers | Selects | Status |
 |--------|-----------|----------|---------|----------|---------|---------|--------|
 | Delta 3 1500 | D361 | JSON SET | ~80 | 13 | 9 | 5 | ✅ Live tested |
-| Delta 3 Plus | D362 | JSON SET | ~80 | 13 | 9 | 5 | ✅ Profile |
-| Delta 3 Max | D381 | JSON SET | ~80 | 13 | 9 | 5 | ✅ Profile |
+| **Delta 3 Plus** | **D362** | **JSON SET** | **~91** | **13** | **9** | **5** | **✅ New in v0.3.9 (+PV2)** |
+| **Delta 3 Max** | **D381** | **JSON SET** | **~107** | **13** | **9** | **5** | **✅ New in v0.3.9 (+PV2+diag)** |
 | Delta Pro 3 | DGEA | Gen 3 cmdFunc=254 | 14 | 9 | 13 | — | ✅ Full control |
-| **Delta Pro Ultra** | **DGEB** | **cmdCode YJ751** | **45** | **7** | **10** | **1** | **✅ New in v0.3.6** |
+| Delta Pro Ultra | DGEB | cmdCode YJ751 | 45 | 7 | 10 | 1 | ✅ Full control |
 | Delta Pro | DAEB | Gen 1 TCP | ~40 | 4 | 4 | 3 | ✅ Full control |
 | Delta 2 | R331 | Gen 2 moduleType | ~50 | 8 | 6 | 5 | ✅ Full control |
 | Delta 2 Max | R351 | Gen 2 moduleType | ~50 | 7 | 6 | 4 | ✅ Full control |
 | Delta Max | DCAB | Gen 1 TCP | ~30 | 4 | 4 | — | ✅ Full control |
 | Delta Mini | DAAZ | Gen 1 TCP | ~18 | 1 | 2 | 3 | ✅ Full control |
+| River 3 | R641 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
+| River 3 Plus | R651 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
 | River 2 | R621 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
 | River 2 Max | R631 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
 | River 2 Pro | R622 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
@@ -353,52 +355,48 @@ logger:
 | Smart Plug | SP10 | Protobuf | ~8 | 1 | 2 | — | ✅ Full control |
 | Glacier | BX11 | Gen 2 moduleType | ~20 | 3 | 3 | — | ✅ Full control |
 | Wave 2 | KT21 | Gen 2 moduleType | ~15 | — | 1 | 4 | ✅ Full control |
+| **Stream AC** | **BK** | **Protobuf cmdFunc=254** | **18** | **—** | **2** | **—** | **✅ New in v0.3.9** |
+| **Stream AC Pro** | **BK31** | **Protobuf cmdFunc=254** | **27** | **2** | **5** | **—** | **✅ New in v0.3.9** |
+| **Stream Ultra** | **BK11** | **Protobuf cmdFunc=254** | **29** | **2** | **5** | **—** | **✅ New in v0.3.9** |
+| Smart Home Panel 1 | SH10 | Protobuf | — | — | — | — | 🔶 SN prefix only |
+| Smart Home Panel 2 | SH20 | Protobuf | — | — | — | — | 🔶 SN prefix only |
 
-**20 devices**, 5 protocol variants: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobuf, cmdCode (YJ751).
+**25 devices with full control** (+ 2 SN-prefix stubs for Smart Home Panels).
+6 protocol variants: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobuf (PowerStream/Smart Plug/Stream AC), cmdCode (YJ751), JSON SET (Delta 3).
 
 ---
 
 ## Changelog
 
-### v0.3.8 -- Stream AC / AC Pro / Ultra (protobuf grid-tied inverter)
+### v0.3.9 -- Stream AC family (protobuf grid-tied inverter) + Delta 3 Plus/Max
 
-**New devices: Stream AC, Stream AC Pro, and Stream Ultra:**
-- Grid-tied micro-inverter family with optional battery (1920Wh LFP)
-- Protobuf protocol (cmdFunc=254) — same envelope as Delta 3 but with dedicated ConfigWrite schema
-- New device file: `devices/stream_ac.py` with proto field numbers from foxthefox community data
-- 30 sensors: battery SOC/SOH, 4× PV input power, grid power/voltage/frequency, system load, Schuko output power, power source breakdown, temperature, settings readback
-- 2 switches: AC Output #1 (relay2), AC Output #2 (relay3) — protobuf SET commands
-- 5 numbers: Max Charge SOC, Min Discharge SOC, Backup Reserve SOC, Grid Feed-in Limit, Display Brightness
-- SN prefix detection: BK31Z (AC Pro), BK11Z (Ultra), BK (AC base)
-- Source: foxthefox/ioBroker.ecoflow-mqtt (ef_stream_ac_pro_data.js, ef_stream_ultra_data.js, ef_stream_inverter_data.js)
+**Stream AC / AC Pro / Ultra -- protobuf telemetry + control**
 
-**Protobuf float field decoding (proto_codec.py):**
-- Added IEEE 754 float decoding for wire type 5 (32-bit fixed) fields
-- Stream AC telemetry uses `optional float` for power/voltage/current sensors
-- New `_decode_stream_pdata()` function with float-aware field mapping
-- `struct.unpack('<f')` converts raw 32-bit int to Python float with 2-decimal rounding
+- New device family: grid-tied micro-inverter with optional 1920Wh LFP battery
+- Protobuf protocol (cmdFunc=254) with IEEE 754 float decoding for wire type 5
+- **Latest-quotas keepalive** (foxthefox pattern): minimal setMessage ping every 15s
+  to keep DisplayPropertyUpload telemetry flowing
+- **Model-specific entity sets** (v0.3.9 split):
+  - Stream AC (BK?1Z): pure inverter -- 18 sensors, 0 switches, 2 numbers
+  - Stream AC Pro (BK31Z): inverter + battery + PV2 -- 27 sensors, 2 switches, 5 numbers
+  - Stream Ultra (BK11Z): inverter + battery + 4xPV -- 29 sensors, 2 switches, 5 numbers
+- Paired SOC commands (max/min must be sent together) via coordinator lookup
+- ConfigWriteAck (cmdId=18) decoder for command confirmation
+- New diagnostic sensors (disabled by default): feedGridMode, stormPatternEnable,
+  stormPatternOpenFlag -- community reverse-engineering aid
 
-**Stream AC telemetry decoder:**
-- cmdFunc=254, cmdId=21 (DisplayPropertyUpload) — 60+ proto field numbers mapped to coordinator keys
-- cmdFunc=254, cmdId=22 (RuntimePropertyUpload) — diagnostic upload periods
-- Coexists with Delta 3 protobuf (same cmdFunc=254, different cmdIds)
+**Delta 3 Plus (D362) + Delta 3 Max (D381)**
 
-**Stream AC command builders:**
-- `stream_build_relay2/relay3()` — toggle AC output relays via ConfigWrite protobuf
-- `stream_build_max_chg_soc/min_dsg_soc()` — paired SOC commands (both fields required per foxthefox)
-- `stream_build_backup_soc/feed_limit/brightness()` — additional control commands
-- Envelope: src=32, dest=2, cmdFunc=254, cmdId=17, productId=56, version=3
+- Full device support added (previously fell back to diagnostic mode)
+- Command set identical to Delta 3 1500 -- all 18 commands reused
+- Plus adds 11 PV2 MPPT input sensors (second solar channel)
+- Max adds 16 diagnostic sensors (DCDC, LLC, PFC, 12V aux, PV voltage refs)
+- All new sensors disabled by default until live telemetry confirms dotted prefix
 
-**New `proto_builder_coord_fn` in number.py:**
-- `(value, device_sn, coordinator_data) → bytes` — protobuf builder with access to current state
-- Used by Stream AC paired SOC: max_chg_soc reads current min_dsg_soc from coordinator, and vice versa
-- Checked before `proto_builder_sn` in `_publish` — reusable for any future protobuf device needing state
+**SN prefix registry updates**
 
-**SN prefix registry expansion:**
-- Smart Home Panel 1 (SH10) and Smart Home Panel 2 (SH20) registered for future protobuf implementation
-- Detection falls through to "Unknown EcoFlow Device" diagnostic mode for SHP devices
-
-**Device count:** 25 devices total (22 previous + Stream AC + Stream AC Pro + Stream Ultra). All with full control.
+- BK, BK31, BK11 for Stream AC family
+- SH10, SH20 for Smart Home Panel 1/2 (prefix only, entities TBD in future release)
 
 ### v0.3.7 -- River 3/3 Plus + DPU showFlag + AC DSG fix
 
