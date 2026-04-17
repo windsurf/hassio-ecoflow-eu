@@ -849,6 +849,35 @@ _R3_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
 SWITCH_DESCRIPTIONS_BY_MODEL["River 3"] = _R3_SWITCHES
 SWITCH_DESCRIPTIONS_BY_MODEL["River 3 Plus"] = _R3_SWITCHES
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Stream AC / AC Pro / Ultra — protobuf relay switches (cmdFunc=254)
+# Source: foxthefox/ioBroker.ecoflow-mqtt ef_stream_ac_pro_data.js
+# relay2Onoff = AC output #1, relay3Onoff = AC output #2
+# Commands use Stream AC protobuf envelope (same as Delta 3 but with productId)
+# proto_builder_sn sends protobuf binary — no sn needed (embedded in envelope)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .proto_codec import stream_build_relay2, stream_build_relay3
+
+_SA_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="sa_ac_out_1", name="AC Output #1", icon="mdi:power-socket-eu",
+        state_key="relay2Onoff",
+        proto_builder_sn=lambda on, sn: stream_build_relay2(on),
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="sa_ac_out_2", name="AC Output #2", icon="mdi:power-socket-eu",
+        state_key="relay3Onoff",
+        proto_builder_sn=lambda on, sn: stream_build_relay3(on),
+        optimistic=True,
+    ),
+)
+
+SWITCH_DESCRIPTIONS_BY_MODEL["Stream AC"] = _SA_SWITCHES
+SWITCH_DESCRIPTIONS_BY_MODEL["Stream AC Pro"] = _SA_SWITCHES
+SWITCH_DESCRIPTIONS_BY_MODEL["Stream Ultra"] = _SA_SWITCHES
+
 
 def _get_switch_descriptions(model: str) -> tuple[EcoFlowSwitchDescription, ...]:
     """Get switch descriptions for a device model. Falls back to empty tuple."""
