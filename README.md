@@ -360,6 +360,46 @@ logger:
 
 ## Changelog
 
+### v0.3.8 -- Stream AC / AC Pro / Ultra (protobuf grid-tied inverter)
+
+**New devices: Stream AC, Stream AC Pro, and Stream Ultra:**
+- Grid-tied micro-inverter family with optional battery (1920Wh LFP)
+- Protobuf protocol (cmdFunc=254) — same envelope as Delta 3 but with dedicated ConfigWrite schema
+- New device file: `devices/stream_ac.py` with proto field numbers from foxthefox community data
+- 30 sensors: battery SOC/SOH, 4× PV input power, grid power/voltage/frequency, system load, Schuko output power, power source breakdown, temperature, settings readback
+- 2 switches: AC Output #1 (relay2), AC Output #2 (relay3) — protobuf SET commands
+- 5 numbers: Max Charge SOC, Min Discharge SOC, Backup Reserve SOC, Grid Feed-in Limit, Display Brightness
+- SN prefix detection: BK31Z (AC Pro), BK11Z (Ultra), BK (AC base)
+- Source: foxthefox/ioBroker.ecoflow-mqtt (ef_stream_ac_pro_data.js, ef_stream_ultra_data.js, ef_stream_inverter_data.js)
+
+**Protobuf float field decoding (proto_codec.py):**
+- Added IEEE 754 float decoding for wire type 5 (32-bit fixed) fields
+- Stream AC telemetry uses `optional float` for power/voltage/current sensors
+- New `_decode_stream_pdata()` function with float-aware field mapping
+- `struct.unpack('<f')` converts raw 32-bit int to Python float with 2-decimal rounding
+
+**Stream AC telemetry decoder:**
+- cmdFunc=254, cmdId=21 (DisplayPropertyUpload) — 60+ proto field numbers mapped to coordinator keys
+- cmdFunc=254, cmdId=22 (RuntimePropertyUpload) — diagnostic upload periods
+- Coexists with Delta 3 protobuf (same cmdFunc=254, different cmdIds)
+
+**Stream AC command builders:**
+- `stream_build_relay2/relay3()` — toggle AC output relays via ConfigWrite protobuf
+- `stream_build_max_chg_soc/min_dsg_soc()` — paired SOC commands (both fields required per foxthefox)
+- `stream_build_backup_soc/feed_limit/brightness()` — additional control commands
+- Envelope: src=32, dest=2, cmdFunc=254, cmdId=17, productId=56, version=3
+
+**New `proto_builder_coord_fn` in number.py:**
+- `(value, device_sn, coordinator_data) → bytes` — protobuf builder with access to current state
+- Used by Stream AC paired SOC: max_chg_soc reads current min_dsg_soc from coordinator, and vice versa
+- Checked before `proto_builder_sn` in `_publish` — reusable for any future protobuf device needing state
+
+**SN prefix registry expansion:**
+- Smart Home Panel 1 (SH10) and Smart Home Panel 2 (SH20) registered for future protobuf implementation
+- Detection falls through to "Unknown EcoFlow Device" diagnostic mode for SHP devices
+
+**Device count:** 25 devices total (22 previous + Stream AC + Stream AC Pro + Stream Ultra). All with full control.
+
 ### v0.3.7 -- River 3/3 Plus + DPU showFlag + AC DSG fix
 
 **New devices: River 3 (R641) and River 3 Plus (R651):**
