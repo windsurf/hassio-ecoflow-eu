@@ -2825,6 +2825,60 @@ _R3_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
 SENSOR_DESCRIPTIONS_BY_MODEL["River 3"] = _R3_SENSORS
 SENSOR_DESCRIPTIONS_BY_MODEL["River 3 Plus"] = _R3_SENSORS
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Stream AC / AC Pro / Ultra — protobuf telemetry (cmdFunc=254, cmdId=21)
+# Source: foxthefox/ioBroker.ecoflow-mqtt (ef_stream_ac_pro_data.js, ef_stream_ultra_data.js)
+# Keys are flat coordinator keys mapped from proto field numbers in proto_codec.py
+# ══════════════════════════════════════════════════════════════════════════════
+
+_SA_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
+    # ── Battery (AC Pro / Ultra — present when battery connected) ────────
+    EcoFlowSensorDescription(key="bmsBattSoc", name="Battery SOC", native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="cmsBattSoc", name="Overall SOC", native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="bmsBattSoh", name="Battery SOH", native_unit_of_measurement=PERCENTAGE, icon="mdi:battery-heart-variant", state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key="bmsDsgRemTime", name="Discharge Remaining Time", native_unit_of_measurement=UnitOfTime.MINUTES, icon="mdi:timer-sand", state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="bmsChgRemTime", name="Charge Remaining Time", native_unit_of_measurement=UnitOfTime.MINUTES, icon="mdi:timer-sand", state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="bmsMaxCellTemp", name="Battery Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="powGetBpCms", name="Battery Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+
+    # ── PV inputs ────────────────────────────────────────────────────────
+    EcoFlowSensorDescription(key="powGetPv", name="PV1 Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="powGetPv2", name="PV2 Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="powGetPvSum", name="Total PV Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="powGetPv3", name="PV3 Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key="powGetPv4", name="PV4 Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+
+    # ── Grid / system power ──────────────────────────────────────────────
+    EcoFlowSensorDescription(key="powGetSysGrid", name="Grid Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="powGetSysLoad", name="System Load", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="gridConnectionPower", name="Grid Connection Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="gridConnectionVol", name="Grid Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, round_digits=1),
+    EcoFlowSensorDescription(key="gridConnectionFreq", name="Grid Frequency", native_unit_of_measurement=UnitOfFrequency.HERTZ, device_class=SensorDeviceClass.FREQUENCY, state_class=SensorStateClass.MEASUREMENT, round_digits=1),
+    EcoFlowSensorDescription(key="invTargetPwr", name="Inverter Target Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+
+    # ── Schuko output power ──────────────────────────────────────────────
+    EcoFlowSensorDescription(key="powGetSchuko1", name="Schuko 1 Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="powGetSchuko2", name="Schuko 2 Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+
+    # ── Power source breakdown ───────────────────────────────────────────
+    EcoFlowSensorDescription(key="powGetSysLoadFromPv", name="Load from PV", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key="powGetSysLoadFromBp", name="Load from Battery", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key="powGetSysLoadFromGrid", name="Load from Grid", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0, entity_registry_enabled_default=False),
+
+    # ── Settings readback ────────────────────────────────────────────────
+    EcoFlowSensorDescription(key="cmsMaxChgSoc", name="Max Charge SOC", native_unit_of_measurement=PERCENTAGE, icon="mdi:battery-charging-high", state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="cmsMinDsgSoc", name="Min Discharge SOC", native_unit_of_measurement=PERCENTAGE, icon="mdi:battery-charging-low", state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="backupReverseSoc", name="Backup Reserve SOC", native_unit_of_measurement=PERCENTAGE, icon="mdi:battery-lock", state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+    EcoFlowSensorDescription(key="feedGridModePowLimit", name="Feed Grid Power Limit", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+
+    # ── Temperature ──────────────────────────────────────────────────────
+    EcoFlowSensorDescription(key="invNtcTemp3", name="Inverter Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT, round_digits=0),
+)
+
+SENSOR_DESCRIPTIONS_BY_MODEL["Stream AC"] = _SA_SENSORS
+SENSOR_DESCRIPTIONS_BY_MODEL["Stream AC Pro"] = _SA_SENSORS
+SENSOR_DESCRIPTIONS_BY_MODEL["Stream Ultra"] = _SA_SENSORS
+
 
 def _get_sensor_descriptions(model: str) -> tuple[EcoFlowSensorDescription, ...]:
     """Get sensor descriptions for a device model. Falls back to empty tuple."""
