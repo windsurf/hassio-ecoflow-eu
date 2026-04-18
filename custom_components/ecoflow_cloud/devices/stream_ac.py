@@ -138,6 +138,15 @@ DISPLAY_FIELDS: dict[int, str] = {
 
     # ── Battery heating ─────────────────────────────────────────────────────
     1212: "bmsBattHeating",             # Battery heating active (0/1)
+
+    # ── Diagnostic fields (v0.3.9 — disabled-by-default, community-unconfirmed)
+    # Source: foxthefox ef_stream_ac_pro_data.js — labeled entity: 'diagnostic'
+    # stormPattern* observed values: { 0: 'off?', 1: 'on?' } — meaning unknown
+    # feedGridMode (520) is already mapped above — exposed as diagnostic sensor.
+    # Reverse-engineering hint: exposing these may help community identify
+    # transitions (e.g. self-use ↔ feed-in ↔ backup) from state changes.
+    467:  "stormPatternEnable",         # Storm pattern enabled (0/1 — diagnostic)
+    468:  "stormPatternOpenFlag",       # Storm pattern open flag (0/1 — diagnostic)
 }
 
 # ── RuntimePropertyUpload (cmdId=22) — diagnostic telemetry ─────────────────
