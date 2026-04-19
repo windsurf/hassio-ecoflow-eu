@@ -329,13 +329,13 @@ logger:
 
 ---
 
-## Device Support (v0.3.9)
+## Device Support (v0.3.10)
 
 | Device | SN Prefix | Protocol | Sensors | Switches | Numbers | Selects | Status |
 |--------|-----------|----------|---------|----------|---------|---------|--------|
 | Delta 3 1500 | D361 | JSON SET | ~80 | 13 | 9 | 5 | ✅ Live tested |
-| **Delta 3 Plus** | **D362** | **JSON SET** | **~91** | **13** | **9** | **5** | **✅ New in v0.3.9 (+PV2)** |
-| **Delta 3 Max** | **D381** | **JSON SET** | **~107** | **13** | **9** | **5** | **✅ New in v0.3.9 (+PV2+diag)** |
+| Delta 3 Plus | D362 | JSON SET | ~91 | 13 | 9 | 5 | ✅ Added v0.3.9 (+PV2) |
+| Delta 3 Max | D381 | JSON SET | ~107 | 13 | 9 | 5 | ✅ Added v0.3.9 (+PV2+diag) |
 | Delta Pro 3 | DGEA | Gen 3 cmdFunc=254 | 14 | 9 | 13 | — | ✅ Full control |
 | Delta Pro Ultra | DGEB | cmdCode YJ751 | 45 | 7 | 10 | 1 | ✅ Full control |
 | Delta Pro | DAEB | Gen 1 TCP | ~40 | 4 | 4 | 3 | ✅ Full control |
@@ -355,18 +355,89 @@ logger:
 | Smart Plug | SP10 | Protobuf | ~8 | 1 | 2 | — | ✅ Full control |
 | Glacier | BX11 | Gen 2 moduleType | ~20 | 3 | 3 | — | ✅ Full control |
 | Wave 2 | KT21 | Gen 2 moduleType | ~15 | — | 1 | 4 | ✅ Full control |
-| **Stream AC** | **BK** | **Protobuf cmdFunc=254** | **18** | **—** | **2** | **—** | **✅ New in v0.3.9** |
-| **Stream AC Pro** | **BK31** | **Protobuf cmdFunc=254** | **27** | **2** | **5** | **—** | **✅ New in v0.3.9** |
-| **Stream Ultra** | **BK11** | **Protobuf cmdFunc=254** | **29** | **2** | **5** | **—** | **✅ New in v0.3.9** |
-| Smart Home Panel 1 | SH10 | Protobuf | — | — | — | — | 🔶 SN prefix only |
-| Smart Home Panel 2 | SH20 | Protobuf | — | — | — | — | 🔶 SN prefix only |
+| Stream AC | BK | Protobuf cmdFunc=254 | 18 | — | 2 | — | ✅ Added v0.3.9 |
+| Stream AC Pro | BK31 | Protobuf cmdFunc=254 | 27 | 2 | 5 | — | ✅ Added v0.3.9 |
+| Stream Ultra | BK11 | Protobuf cmdFunc=254 | 29 | 2 | 5 | — | ✅ Added v0.3.9 |
+| **Wave 3** | **KT3** ⚠️ | **Protobuf cmdFunc=254** | **25** | **—** | **—** | **—** | **🆕 v0.3.10 read-only** |
+| **Glacier 55** | **BX55** ⚠️ | **Protobuf cmdFunc=254** | **22** | **4** | **6** | **1** | **🆕 v0.3.10 full control** |
+| **Smart Home Panel** | **SH10** | **JSON SET (TCP)** | **45** | **13** | **2** | **—** | **🆕 v0.3.10 full control** |
+| **Smart Home Panel 2** | **SH20** | **Protobuf cmdFunc=12** | **5** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| **PowerKit** | **M106** ⚠️ | **JSON heartbeat** | **30** | **—** | **—** | **—** | **🆕 v0.3.10 read-only** |
+| **PowerOcean** | **PO11** ⚠️ | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| **PowerOcean Plus** | **PO31** ⚠️ | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| **PowerOcean Fit** | **POFI** ⚠️ | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
 
-**25 devices with full control** (+ 2 SN-prefix stubs for Smart Home Panels).
-6 protocol variants: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobuf (PowerStream/Smart Plug/Stream AC), cmdCode (YJ751), JSON SET (Delta 3).
+**32 devices with active entity support** + 3 sensor-stub devices awaiting decoder completion.
+Protocol variants: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobuf (PowerStream/Smart Plug/Stream AC/cmdFunc=96), cmdCode (YJ751), JSON SET (Delta 3, SHP1).
+
+⚠️ = placeholder SN prefix — report actual SN via GitHub issue for correction
+🔶 = entities registered but decoder routing incomplete (activates automatically in v0.4.0)
 
 ---
 
 ## Changelog
+
+### v0.3.10 -- Climate + Smart Home Panel + PowerKit + PowerOcean
+
+**Climate devices**
+
+- **Wave 3** (mobile AC with battery, placeholder SN: KT3): protobuf cmdFunc=254
+  family, 25 sensors covering ambient temperature/humidity, supply air,
+  condensate level, operating mode, battery, AC/PV/DC power. Read-only in
+  this release -- foxthefox documents //cmd markers but no SET implementation.
+- **Glacier 55** (dual-zone portable refrigerator, placeholder SN: BX55):
+  protobuf cmdFunc=254, 22 sensors + 4 switches (child lock, simple mode,
+  temp alert, beep) + 6 numbers (left/right setpoints as **floats**, max/min
+  SOC, standby, battery protect) + 1 select (cooling mode Eco/Max/Sleep).
+  First device using the new `_ff()` IEEE 754 float helper for SET commands.
+
+**Smart Home Panel**
+
+- **SHP1 / Smart Home Panel** (SH10): JSON SET protocol with `operateType: TCP`.
+  45 sensors (per-circuit power/current/name + system stats + EPS + thresholds)
+  + 13 switches (12 channel-controls + EPS mode) + 2 numbers (backup discharge
+  thresholds). Activates the SH10 stub registered in v0.3.9.
+- **SHP2 / Smart Home Panel 2** (SH20): protobuf cmdFunc=12 (ProtoPushAndSet).
+  5 sensor stubs registered. Full decoder routing for cmdFunc=12 lands in
+  v0.4.0 -- entities will activate automatically once decoder support is added.
+
+**PowerKit** (modular off-grid system, placeholder SN: M106)
+
+- Read-only by design -- foxthefox documents only GET commands. ~30 core
+  sensors selected from 215+ telemetry fields across submodules: bp1
+  (primary battery), bp2, bbcin/bbcout (DC-DC), iclow/ichigh (chargers),
+  ldac/lddc (load AC/DC), kitscc (solar), wireless. Uses dotted prefix
+  keys (`bp1.soc`, `ldac.outWatts`).
+
+**PowerOcean / PowerOcean Plus / PowerOcean Fit** (residential energy storage)
+
+- Tesla Powerwall / Sessy / Sonnen-class home battery + hybrid inverter.
+  v0.3.10: SN-prefix detection (PO11/PO31/POFI placeholders) + 22 sensor
+  stubs covering battery/EMS/PCS/grid safety. Full protobuf decoder for
+  cmdFunc=96 (JTS1_EMS_HEARTBEAT) and cmdFunc=254/cmdId=32
+  (EnergyTotalReport) coming in v0.4.0.
+
+**Decoder routing**
+
+- `decode_proto_telemetry()` now accepts a `device_model` parameter to
+  disambiguate cmdFunc=254/cmdId=21 telemetry between device families that
+  share field numbers but differ in semantic meaning. Fixes a field 777
+  conflict between Wave 3 (`powGetSelfConsume` in W) and Glacier 55
+  (`inputVolt777` in V) -- both would have produced wrong sensor values
+  on the same-numbered field.
+
+**SN-prefix registry updates**
+
+- KT3 (Wave 3), BX55 (Glacier 55), M106 (PowerKit)
+- PO11 / PO31 / POFI (PowerOcean variants)
+- Total registered models: 35 (was 30 in v0.3.9)
+
+**Note on placeholder SN prefixes**
+
+Several new devices (Wave 3, Glacier 55, PowerKit, PowerOcean variants)
+ship with placeholder SN prefixes inferred from foxthefox naming patterns.
+If your device is misdetected, please open a GitHub issue with your full
+SN string -- prefixes will be corrected and a v0.3.10.x patch released.
 
 ### v0.3.9 -- Stream AC family (protobuf grid-tied inverter) + Delta 3 Plus/Max
 
