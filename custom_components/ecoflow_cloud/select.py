@@ -351,6 +351,29 @@ SELECT_DESCRIPTIONS_BY_MODEL["Stream AC"] = ()
 SELECT_DESCRIPTIONS_BY_MODEL["Stream AC Pro"] = ()
 SELECT_DESCRIPTIONS_BY_MODEL["Stream Ultra"] = ()
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Glacier 55 (placeholder SN: BX55) — cooling mode select (cmdFunc=254, cmdId=17)
+# Source: foxthefox ef_glacier55_data.js — coolingMode field 231 with values 0/1/2
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .proto_codec import g55_build_cooling_mode
+
+_G55_SELECTS: tuple[EcoFlowSelectDescription, ...] = (
+    EcoFlowSelectDescription(
+        key="g55_cooling_mode", name="Cooling Mode",
+        icon="mdi:snowflake-variant",
+        state_key="coolingMode",
+        options_map={
+            "Eco":   0,
+            "Max":   1,
+            "Sleep": 2,
+        },
+        proto_builder_sn=lambda raw, sn: g55_build_cooling_mode(int(raw)),
+    ),
+)
+
+SELECT_DESCRIPTIONS_BY_MODEL["Glacier 55"] = _G55_SELECTS
+
 
 def _get_select_descriptions(model: str) -> tuple[EcoFlowSelectDescription, ...]:
     """Get select descriptions for a device model. Falls back to empty tuple."""
