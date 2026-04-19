@@ -879,6 +879,109 @@ SWITCH_DESCRIPTIONS_BY_MODEL["Stream Ultra"] = _SA_SWITCHES
 # Stream AC (BK?1Z) is a pure inverter without battery — no relay switches.
 # Only AC Pro (BK31Z) and Ultra (BK11Z) have relay2/relay3 AC outputs.
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Glacier 55 (placeholder SN: BX55) — protobuf switches (cmdFunc=254, cmdId=17)
+# Source: foxthefox ef_glacier55_data.js — 4 toggle commands
+# Cooling mode is a select (multi-value), see select.py.
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .proto_codec import (
+    g55_build_child_lock,
+    g55_build_simple_mode,
+    g55_build_temp_alert,
+    g55_build_beep,
+)
+
+_G55_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="g55_child_lock", name="Child Lock", icon="mdi:lock",
+        state_key="childLock",
+        proto_builder_sn=lambda on, sn: g55_build_child_lock(on),
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="g55_simple_mode", name="Simple Mode", icon="mdi:gesture-tap-button",
+        state_key="simpleMode",
+        proto_builder_sn=lambda on, sn: g55_build_simple_mode(on),
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="g55_temp_alert", name="Temperature Alert", icon="mdi:thermometer-alert",
+        state_key="tempAlert",
+        proto_builder_sn=lambda on, sn: g55_build_temp_alert(on),
+        optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="g55_beep", name="Beep", icon="mdi:volume-high",
+        state_key="enBeep",
+        proto_builder_sn=lambda on, sn: g55_build_beep(on),
+        optimistic=True,
+    ),
+)
+
+SWITCH_DESCRIPTIONS_BY_MODEL["Glacier 55"] = _G55_SWITCHES
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Smart Home Panel 1 (SH10) — JSON SET switches (operateType: "TCP")
+# Source: foxthefox ef_panel_data.js deviceCmd templates
+#
+# Switches:
+#   - 10 mains channel controls (ctrlMode_0 .. ctrlMode_9)
+#   - 2 backup channel controls (ctrlMode_10 .. ctrlMode_11)
+#   - 1 EPS (Emergency Power System) mode toggle
+#
+# Envelope (handled by Priority 3 JSON MQTT SET in _publish):
+#   { moduleType: 0, operateType: "TCP", params: <from cmd_params> }
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import panel as shp1
+
+_SHP1_SWITCHES_BUILDER = []
+for ch in range(shp1.TOTAL_CHANNELS):
+    is_backup = ch >= shp1.NUM_MAINS_CHANNELS
+    label = f"Backup Ch {ch - shp1.NUM_MAINS_CHANNELS}" if is_backup else f"Mains Ch {ch}"
+    # Use correct state_key per channel type (mains vs backup)
+    if is_backup:
+        state_key = shp1.KEY_CTRL_MODE_FMT_BACKUP.format(ch=ch)
+    else:
+        state_key = shp1.KEY_CTRL_MODE_FMT_MAINS.format(ch=ch)
+
+    # Capture ch and is_backup in closure via default args
+    def _make_params_fn(channel: int, backup: bool):
+        def _params(on: bool) -> dict:
+            return shp1.shp1_build_channel_ctrl(channel, on, backup=backup)["params"]
+        return _params
+
+    _SHP1_SWITCHES_BUILDER.append(
+        EcoFlowSwitchDescription(
+            key=f"shp1_ch_{ch}_ctrl",
+            name=f"{label} Output",
+            icon="mdi:electric-switch",
+            state_key=state_key,
+            cmd_module=0,
+            cmd_operate="TCP",
+            cmd_params=_make_params_fn(ch, is_backup),
+            optimistic=True,
+            entity_registry_enabled_default=(ch < 6 and not is_backup),
+        )
+    )
+
+# EPS mode switch (separate command structure)
+def _shp1_eps_params(on: bool) -> dict:
+    return shp1.shp1_build_eps_mode(on)["params"]
+
+_SHP1_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = tuple(_SHP1_SWITCHES_BUILDER) + (
+    EcoFlowSwitchDescription(
+        key="shp1_eps_mode", name="EPS Mode", icon="mdi:power-plug-battery",
+        state_key=shp1.KEY_EPS_MODE,
+        cmd_module=0, cmd_operate="TCP",
+        cmd_params=_shp1_eps_params,
+        optimistic=True,
+    ),
+)
+
+SWITCH_DESCRIPTIONS_BY_MODEL["Smart Home Panel"] = _SHP1_SWITCHES
+
 
 def _get_switch_descriptions(model: str) -> tuple[EcoFlowSwitchDescription, ...]:
     """Get switch descriptions for a device model. Falls back to empty tuple."""
