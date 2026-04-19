@@ -76,6 +76,15 @@ def _fs(field_num: int, text: str) -> bytes:
     return _fb(field_num, text.encode("utf-8"))
 
 
+def _ff(field_num: int, value: float) -> bytes:
+    """Encode IEEE 754 float field: tag(wire=5) + 4 bytes little-endian.
+
+    Used by devices that need float SET values (e.g. Glacier 55 setpoints).
+    Most EcoFlow ConfigWrite fields are varint — float fields are the exception.
+    """
+    return _varint((field_num << 3) | 5) + struct.pack("<f", float(value))
+
+
 # ---------------------------------------------------------------------------
 # GET command (session initiation + keepalive)
 # ---------------------------------------------------------------------------
@@ -573,6 +582,114 @@ def stream_build_latest_quotas() -> bytes:
     return _fb(1, header)
 
 
+# ---------------------------------------------------------------------------
+# Glacier 55 protobuf command builders (v0.3.10)
+# ---------------------------------------------------------------------------
+#
+# Glacier 55 uses the same Stream AC envelope (cmdFunc=254, cmdId=17) but
+# with one critical difference: ConfigWrite pdata does NOT include cfgUtcTime.
+# Stream AC always prepends cfgUtcTime (field 6); Glacier 55 omits it.
+#
+# Command set (from foxthefox ef_glacier55_data.js):
+#   - 7 toggles (uint32 0/1): childLock, simpleMode, tempAlert, coolingMode (mode), batProtect, enBeep
+#   - 2 setpoints (FLOAT, °C): setPointLeft, setPointRight
+#   - 3 numbers (uint32): cmsMaxChgSoc, cmsMinDsgSoc, devStandbyTime
+#
+# Source: foxthefox ef_glacier55_data.js prepareProtoCmd() — switch cases at line 1575+
+
+from .devices.glacier55 import (
+    CMD_EN_BEEP_FIELD as _G55_EN_BEEP_FIELD,
+    CMD_DEV_STANDBY_FIELD as _G55_DEV_STANDBY_FIELD,
+    CMD_MAX_CHG_SOC_FIELD as _G55_MAX_CHG_SOC_FIELD,
+    CMD_MIN_DSG_SOC_FIELD as _G55_MIN_DSG_SOC_FIELD,
+    CMD_SET_POINT_LEFT_FIELD as _G55_SET_POINT_LEFT_FIELD,
+    CMD_SET_POINT_RIGHT_FIELD as _G55_SET_POINT_RIGHT_FIELD,
+    CMD_CHILD_LOCK_FIELD as _G55_CHILD_LOCK_FIELD,
+    CMD_SIMPLE_MODE_FIELD as _G55_SIMPLE_MODE_FIELD,
+    CMD_BAT_PROTECT_FIELD as _G55_BAT_PROTECT_FIELD,
+    CMD_COOLING_MODE_FIELD as _G55_COOLING_MODE_FIELD,
+    CMD_TEMP_ALERT_FIELD as _G55_TEMP_ALERT_FIELD,
+)
+
+
+def _g55_wrap_cmd(pdata_fields: bytes) -> bytes:
+    """Wrap Glacier 55 ConfigWrite pdata.
+
+    Identical envelope to Stream AC (cmdFunc=254, cmdId=17, productId=56)
+    but the pdata does NOT prepend cfgUtcTime.
+    """
+    return _stream_wrap_cmd(pdata_fields)
+
+
+def g55_build_toggle(field_num: int, enabled: bool) -> bytes:
+    """Build a Glacier 55 toggle command (uint32 0/1, no timestamp)."""
+    pdata = _fv(field_num, 1 if enabled else 0)
+    return _g55_wrap_cmd(pdata)
+
+
+def g55_build_uint(field_num: int, value: int) -> bytes:
+    """Build a Glacier 55 uint32 command (no timestamp)."""
+    pdata = _fv(field_num, int(value))
+    return _g55_wrap_cmd(pdata)
+
+
+def g55_build_setpoint_left(temp_celsius: float) -> bytes:
+    """Set left zone target temperature (FLOAT °C, ConfigWrite field 226)."""
+    pdata = _ff(_G55_SET_POINT_LEFT_FIELD, float(temp_celsius))
+    return _g55_wrap_cmd(pdata)
+
+
+def g55_build_setpoint_right(temp_celsius: float) -> bytes:
+    """Set right zone target temperature (FLOAT °C, ConfigWrite field 227)."""
+    pdata = _ff(_G55_SET_POINT_RIGHT_FIELD, float(temp_celsius))
+    return _g55_wrap_cmd(pdata)
+
+
+def g55_build_cooling_mode(mode: int) -> bytes:
+    """Set cooling mode (0=eco, 1=max, 2=sleep) — ConfigWrite field 231."""
+    return g55_build_uint(_G55_COOLING_MODE_FIELD, mode)
+
+
+def g55_build_child_lock(enabled: bool) -> bytes:
+    """Toggle child lock — ConfigWrite field 228."""
+    return g55_build_toggle(_G55_CHILD_LOCK_FIELD, enabled)
+
+
+def g55_build_simple_mode(enabled: bool) -> bytes:
+    """Toggle simple mode — ConfigWrite field 229."""
+    return g55_build_toggle(_G55_SIMPLE_MODE_FIELD, enabled)
+
+
+def g55_build_temp_alert(enabled: bool) -> bytes:
+    """Toggle temperature alert — ConfigWrite field 234."""
+    return g55_build_toggle(_G55_TEMP_ALERT_FIELD, enabled)
+
+
+def g55_build_bat_protect(level: int) -> bytes:
+    """Set battery protection level (0=low, 1=med, 2=high) — ConfigWrite field 230."""
+    return g55_build_uint(_G55_BAT_PROTECT_FIELD, level)
+
+
+def g55_build_beep(enabled: bool) -> bytes:
+    """Toggle beep — ConfigWrite field 9."""
+    return g55_build_toggle(_G55_EN_BEEP_FIELD, enabled)
+
+
+def g55_build_max_chg_soc(soc: int) -> bytes:
+    """Set max charge SOC — ConfigWrite field 33."""
+    return g55_build_uint(_G55_MAX_CHG_SOC_FIELD, soc)
+
+
+def g55_build_min_dsg_soc(soc: int) -> bytes:
+    """Set min discharge SOC — ConfigWrite field 34."""
+    return g55_build_uint(_G55_MIN_DSG_SOC_FIELD, soc)
+
+
+def g55_build_dev_standby(minutes: int) -> bytes:
+    """Set device standby timeout in minutes — ConfigWrite field 13."""
+    return g55_build_uint(_G55_DEV_STANDBY_FIELD, minutes)
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -771,11 +888,33 @@ from .devices.stream_ac import RUNTIME_FIELDS as _SA_RUNTIME_FIELDS
 from .devices.stream_ac import FLOAT_FIELDS as _SA_FLOAT_FIELDS
 from .devices.stream_ac import CONFIG_ACK_FIELDS as _SA_CONFIG_ACK_FIELDS
 
+# Wave 3 uses the same protobuf envelope (cmdFunc=254, cmdId=21) as Stream AC.
+# Field numbers overlap on shared concepts (BMS, CMS, PV power, timezone) and
+# are semantically identical — verified with no conflicts during v0.3.10 build.
+# We merge the field maps so a single decoder handles both device families.
+from .devices.wave3 import DISPLAY_FIELDS as _W3_DISPLAY_FIELDS
+from .devices.wave3 import FLOAT_FIELDS as _W3_FLOAT_FIELDS
+
+_PROTO_254_DISPLAY_FIELDS = {**_SA_DISPLAY_FIELDS, **_W3_DISPLAY_FIELDS}
+_PROTO_254_FLOAT_FIELDS = _SA_FLOAT_FIELDS | _W3_FLOAT_FIELDS
+
 # (cmdFunc, cmdId) → (field_map, float_fields_set)
 _STREAM_AC_DECODERS: dict[tuple[int, int], tuple[dict[int, str], set[int]]] = {
-    (254, 21): (_SA_DISPLAY_FIELDS, _SA_FLOAT_FIELDS),    # DisplayPropertyUpload
+    (254, 21): (_PROTO_254_DISPLAY_FIELDS, _PROTO_254_FLOAT_FIELDS),  # DisplayPropertyUpload (Stream AC + Wave 3)
     (254, 22): (_SA_RUNTIME_FIELDS, set()),                # RuntimePropertyUpload
     (254, 18): (_SA_CONFIG_ACK_FIELDS, set()),             # ConfigWriteAck — confirms SET values
+}
+
+# Glacier 55 has its own DisplayPropertyUpload field map. Field 777 means
+# "input voltage (V)" on Glacier 55 but "self-consumption power (W)" on Wave 3
+# — the same wire field number with different semantic meaning. Routing by
+# device_model in decode_proto_telemetry() picks the right map.
+from .devices.glacier55 import DISPLAY_FIELDS as _G55_DISPLAY_FIELDS
+from .devices.glacier55 import FLOAT_FIELDS as _G55_FLOAT_FIELDS
+
+_GLACIER55_DECODERS: dict[tuple[int, int], tuple[dict[int, str], set[int]]] = {
+    (254, 21): (_G55_DISPLAY_FIELDS, _G55_FLOAT_FIELDS),
+    (254, 18): (_SA_CONFIG_ACK_FIELDS, set()),     # reuse Stream AC ack fields
 }
 
 
@@ -787,7 +926,10 @@ def _decode_float_bits(raw_int: int) -> float:
         return 0.0
 
 
-def decode_proto_telemetry(raw: bytes) -> dict[str, int | float] | None:
+def decode_proto_telemetry(
+    raw: bytes,
+    device_model: str | None = None,
+) -> dict[str, int | float] | None:
     """Decode a protobuf telemetry message into coordinator-compatible dict.
 
     Returns {coordinator_key: value} for known heartbeat messages.
@@ -796,7 +938,13 @@ def decode_proto_telemetry(raw: bytes) -> dict[str, int | float] | None:
     Supports:
       - PowerStream (cmdFunc=20, all cmdIds)
       - Smart Plug (cmdFunc=2, all cmdIds)
-      - Stream AC (cmdFunc=254, cmdId=21 DisplayPropertyUpload, cmdId=22 RuntimePropertyUpload)
+      - Stream AC family + Wave 3 (cmdFunc=254, cmdId=21 DisplayPropertyUpload)
+      - Glacier 55 (cmdFunc=254, cmdId=21 — separate field map due to field 777
+        semantic conflict with Wave 3)
+
+    The device_model parameter is used to disambiguate cmdFunc=254/cmdId=21
+    decoding. If unknown or None, defaults to the Stream AC + Wave 3 merged
+    field map (which covers the most devices).
     """
     header = _extract_header(raw)
     if header is None:
@@ -808,7 +956,17 @@ def decode_proto_telemetry(raw: bytes) -> dict[str, int | float] | None:
     pdata = header["pdata"]
     device_name = _CMD_FUNC_NAMES.get(cmd_func, f"unknown(func={cmd_func})")
 
-    # Check Stream AC decoders first (cmdFunc=254 with specific cmdIds)
+    # v0.3.10: Glacier 55 has its own DisplayPropertyUpload field map because
+    # field 777 means different things (input voltage vs Wave 3 self-consume).
+    # Only Glacier 55 routes to the dedicated decoder; all other cmdFunc=254
+    # devices use the merged Stream AC + Wave 3 map.
+    if device_model == "Glacier 55":
+        glacier_decoder = _GLACIER55_DECODERS.get((cmd_func, cmd_id))
+        if glacier_decoder is not None:
+            field_map, float_fields = glacier_decoder
+            return _decode_stream_pdata(pdata, field_map, float_fields, device_name, cmd_id)
+
+    # Check Stream AC decoders (cmdFunc=254 with specific cmdIds)
     stream_decoder = _STREAM_AC_DECODERS.get((cmd_func, cmd_id))
     if stream_decoder is not None:
         field_map, float_fields = stream_decoder
