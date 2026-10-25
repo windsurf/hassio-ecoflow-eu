@@ -202,7 +202,7 @@ def build_charge_target(soc: int) -> bytes:
 # ---------------------------------------------------------------------------
 #
 # PowerStream uses a different envelope than Delta 3.  The outer message is
-# PowerStreamSendHeaderMsg (proto schema in tolwi/powerstream.proto).
+# PowerStreamSendHeaderMsg (proto schema in community powerstream.proto).
 #
 # Header fields (PowerStreamHeader — field numbers from .proto):
 #   1  pdata (bytes)      — serialized inner payload
@@ -224,7 +224,7 @@ def build_charge_target(soc: int) -> bytes:
 # PowerStreamSendHeaderMsg wraps one header in repeated field 1.
 #
 # All inner payloads are a single varint at field 1.
-# Source: tolwi/powerstream.proto + internal/powerstream.py Command enum.
+# Source: community powerstream.proto + internal/powerstream.py Command enum.
 
 # Command IDs (cmd_func=20 for all)
 PS_CMD_PERMANENT_WATTS = 129   # output limit (deciWatts)
@@ -325,7 +325,7 @@ def ps_build_feed_protect(enabled: bool, device_sn: str) -> bytes:
 #   cmdFunc = 2 (CMD_FUNC_WN_SMART_PLUG)
 #   src = 32 (APP), dest = 53 (MQTT)
 #
-# Source: tolwi/smartplug.proto + internal/smart_plug.py
+# Source: community smartplug.proto + internal/smart_plug.py
 #
 # Command IDs (cmdFunc=2 for all):
 #   129 = switch on/off (WnPlugSwitchMessage: field 1 = bool)
@@ -713,7 +713,7 @@ def g55_build_dev_standby(minutes: int) -> bytes:
 #   The pdata contains the actual sensor values as varint fields.
 #
 # Sources:
-#   - tolwi/hassio-ecoflow-cloud (proto/powerstream.proto, internal/smart_plug.py)
+#   - community HA integration (proto/powerstream.proto, internal/smart_plug.py)
 #   - foxthefox/ioBroker.ecoflow-mqtt (protobuf decoding, field analysis)
 #   - moifort (GitHub issue #136, Smart Plug proto definition)
 #
@@ -791,7 +791,7 @@ def _extract_header(raw: bytes) -> dict[str, int | bytes] | None:
 # to the flat key names used by coordinator.data and sensor.py descriptions.
 
 # PowerStream inverter_heartbeat (cmd_func=20, cmd_id=1)
-# Source: tolwi powerstream.proto, foxthefox inverter_heartbeat definition
+# Source: community powerstream.proto, foxthefox inverter_heartbeat definition
 _PS_HEARTBEAT_FIELDS: dict[int, str] = {
     1:  "20_1.pv1ErrCode",
     2:  "20_1.pv1WarnCode",
@@ -852,7 +852,7 @@ _PS_HEARTBEAT_FIELDS: dict[int, str] = {
 }
 
 # Smart Plug heartbeat (cmd_func=2, cmd_id=2 or 1)
-# Source: tolwi smartplug.proto (WnPlugHeartbeatPack), foxthefox plug data
+# Source: community smartplug.proto (WnPlugHeartbeatPack), foxthefox plug data
 # Keys are flat (no prefix) — matching smart_plug.py device definition
 _SP_HEARTBEAT_FIELDS: dict[int, str] = {
     1:  "watts",

@@ -1,7 +1,7 @@
 """Device definitions for EcoFlow River 1 series (River Max, River Pro, River Mini).
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/river_max.py, river_pro.py, river_mini.py)
+  - community HA integration (internal/river_max.py, river_pro.py, river_mini.py)
   - snell-evan-itt/hassio-ecoflow-cloud-US (confirmed for Max/Pro)
 
 Gen 1 protocol — bmsMaster.* / pd.* / inv.* key schema.

@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Delta Pro.
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/delta_pro.py — confirmed)
+  - community HA integration (internal/delta_pro.py — confirmed)
   - snell-evan-itt/hassio-ecoflow-cloud-US (internal/delta_pro.py — confirmed)
 
 Gen 1 protocol — key differences vs Delta 2/3:

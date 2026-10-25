@@ -158,6 +158,10 @@ class EcoFlowSensorDescription(SensorEntityDescription):
     round_digits: int | None  = 2
     # Optional fallback key used when the primary key is absent in coordinator data
     fallback_key: str | None  = None
+    # v0.4.0: map raw integer values to text (use with SensorDeviceClass.ENUM)
+    value_map:    tuple | None = None
+    # v0.4.0: raw values that mean "no value" (shown as unknown)
+    invalid_values: tuple      = ()
 
 
 _D361_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
@@ -1798,7 +1802,7 @@ _D361_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Delta 2 — 45 sensors
-# Source: tolwi/hassio-ecoflow-cloud (internal/delta2.py) + US repo (confirmed)
+# Source: community HA integration (internal/delta2.py) + US repo (confirmed)
 # ══════════════════════════════════════════════════════════════════════════════
 
 _D2_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
@@ -2203,7 +2207,7 @@ _D2_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Delta 2 Max — 67 sensors
-# Source: tolwi/hassio-ecoflow-cloud (internal/delta2_max.py)
+# Source: community HA integration (internal/delta2_max.py)
 # Key differences: dual solar, dual numbered slaves, accumulative energy
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -2734,6 +2738,43 @@ _D3M_EXTRA_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
 _D3M_SENSORS: tuple[EcoFlowSensorDescription, ...] = _D3P_SENSORS + _D3M_EXTRA_SENSORS
 SENSOR_DESCRIPTIONS_BY_MODEL["Delta 3 Max"] = _D3M_SENSORS
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta 3 Max Plus (D3M1) — flat keys (v0.4.0)
+# Source: EcoFlow Developer docs (Delta 3 Max Plus) + live diagnostics dumps
+# Keys marked "App Login only" are absent on the Developer API route.
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta3_max_plus as d3mp
+
+_W  = UnitOfPower.WATT
+_PW = SensorDeviceClass.POWER
+_MS = SensorStateClass.MEASUREMENT
+
+_D3MP_SENSORS: tuple[EcoFlowSensorDescription, ...] = (
+    EcoFlowSensorDescription(key=d3mp.KEY_SOC, name="Battery Level", native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY, state_class=_MS, round_digits=1),
+    EcoFlowSensorDescription(key=d3mp.KEY_IN_W, name="Total Input Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0),
+    EcoFlowSensorDescription(key=d3mp.KEY_OUT_W, name="Total Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0),
+    EcoFlowSensorDescription(key=d3mp.KEY_AC_IN_W, name="AC Input Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0),
+    EcoFlowSensorDescription(key=d3mp.KEY_PV_W, name="Solar Input Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0),
+    EcoFlowSensorDescription(key=d3mp.KEY_PV2_W, name="Solar 2 Input Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0),
+    EcoFlowSensorDescription(key=d3mp.KEY_DC12V_W, name="DC 12V Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0),
+    EcoFlowSensorDescription(key=d3mp.KEY_USBA1_W, name="USB-A 1 Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_USBA2_W, name="USB-A 2 Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_USBC1_W, name="USB-C 1 Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_USBC2_W, name="USB-C 2 Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_USBC3_W, name="USB-C 3 Output Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_CHG_DSG_STATE, name="Charge State", device_class=SensorDeviceClass.ENUM, options=["idle", "discharging", "charging"], icon="mdi:battery-sync", value_map=d3mp.CHG_DSG_STATES),
+    EcoFlowSensorDescription(key=d3mp.KEY_CHG_REM_MIN, name="Time To Full", native_unit_of_measurement=UnitOfTime.MINUTES, device_class=SensorDeviceClass.DURATION, state_class=_MS, round_digits=0, invalid_values=(d3mp.REMAIN_TIME_NONE,)),
+    EcoFlowSensorDescription(key=d3mp.KEY_DSG_REM_MIN, name="Remaining Run Time", native_unit_of_measurement=UnitOfTime.MINUTES, device_class=SensorDeviceClass.DURATION, state_class=_MS, round_digits=0, invalid_values=(d3mp.REMAIN_TIME_NONE,)),
+    # App Login route only
+    EcoFlowSensorDescription(key=d3mp.KEY_BMS_SOC, name="BMS Battery Level", native_unit_of_measurement=PERCENTAGE, state_class=_MS, round_digits=1, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_DCP_W, name="DCP Input Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_MAX_CELL_TEMP, name="Max Cell Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_MIN_CELL_TEMP, name="Min Cell Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+    EcoFlowSensorDescription(key=d3mp.KEY_AC_CHG_POW_MAX, name="AC Max Charging Power", native_unit_of_measurement=_W, device_class=_PW, state_class=_MS, round_digits=0, entity_registry_enabled_default=False),
+)
+SENSOR_DESCRIPTIONS_BY_MODEL["Delta 3 Max Plus"] = _D3MP_SENSORS
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Smart Plug — 5 sensors (protobuf telemetry — requires decoder in on_message)
@@ -3216,7 +3257,7 @@ SENSOR_DESCRIPTIONS_BY_MODEL["PowerKit"] = _PK_SENSORS
 # PowerOcean / PowerOcean Plus / PowerOcean Fit
 # Source: foxthefox ef_powerocean_data.js (JTS1_EMS_HEARTBEAT — 200+ fields)
 # v0.3.10: sensor stubs only. Full protobuf decoder for cmdFunc=96 lands
-# in v0.4.0 — entities defined here will activate then.
+# in a later version — entities defined here will activate then.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from .devices import powerocean as po
@@ -3324,6 +3365,17 @@ class EcoFlowSensorEntity(CoordinatorEntity[EcoflowCoordinator], SensorEntity):
             val = self.coordinator.data.get(self.entity_description.fallback_key)
         if val is None:
             return None
+        if self.entity_description.invalid_values:
+            try:
+                if float(val) in self.entity_description.invalid_values:
+                    return None
+            except (TypeError, ValueError):
+                pass
+        if self.entity_description.value_map is not None:
+            try:
+                return dict(self.entity_description.value_map).get(int(float(val)))
+            except (TypeError, ValueError):
+                return None
         try:
             # Handle comma-decimal strings (e.g. bms_slave.diffSoc = "1,11")
             if isinstance(val, str) and "," in val:

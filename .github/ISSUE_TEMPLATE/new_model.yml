@@ -1,0 +1,52 @@
+name: New model report
+description: Report how this integration behaves on an EcoFlow device not yet marked as tested.
+title: "[Model] "
+labels: ["model report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. A diagnostics download from a real device is what turns a device from
+        "profile available" into "supported". Serial numbers are masked in it, but check the
+        file and any log excerpt for your serial number before you attach them here.
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: As shown in the EcoFlow app, e.g. Delta 3 Max Plus.
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: In the EcoFlow app, under Device Info.
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: route
+    attributes:
+      label: Connection method
+      options:
+        - Developer API (Access Key and Secret Key)
+        - App Login (email and password)
+        - Both (App Login with Developer API keys)
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Settings → Devices & services → EcoFlow Cloud → your device → three dots → Download diagnostics. Drag the file in here.
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What works, and what does not
+      description: Entities missing or showing nonsense, switches and sliders that do nothing or do not follow the app.

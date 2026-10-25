@@ -48,6 +48,8 @@ class EcoFlowSelectDescription(SelectEntityDescription):
     # proto_builder_sn: (raw_value, device_sn) → bytes for protobuf binary commands (PowerStream)
     proto_builder_sn: Any        = None
     entity_registry_enabled_default: bool = True
+    # v0.4.0: if set, send the Delta Pro 3 JSON envelope {cmdFunc:254, params:{dp3_cmd_key: value}}
+    dp3_cmd_key: str             = ""
 
 
 # ── Helper: build symmetric label ↔ value maps ───────────────────────────────
@@ -301,18 +303,18 @@ SELECT_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSelectDescription, ...]] = 
     "Delta 2": _D361_SELECTS,
     "Delta 2 Max": _D2M_SELECTS,
     "Delta Pro": _DPRO_SELECTS,
-    "Delta Max": (),              # selects commented out in tolwi source
-    "Delta Mini": _DPRO_SELECTS,  # same selects as Pro (confirmed in tolwi)
+    "Delta Max": (),              # selects commented out in the reference source
+    "Delta Mini": _DPRO_SELECTS,  # same selects as Pro (confirmed upstream)
     "River 2": _R2_SELECTS,
     "River 2 Max": _R2_SELECTS,
     "River 2 Pro": _R2_SELECTS,
     "River Max": _RMAX_SELECTS,
-    "River Pro": _RMAX_SELECTS,   # same selects as Max (confirmed in tolwi)
+    "River Pro": _RMAX_SELECTS,   # same selects as Max (confirmed upstream)
     "River Mini": (),
     "PowerStream": _PS_SELECTS,
     "PowerStream 600W": _PS_SELECTS,
     "PowerStream 800W": _PS_SELECTS,
-    "Glacier": (),  # no selects (tolwi confirms empty)
+    "Glacier": (),  # no selects (reference confirms empty)
     "Wave 2": _W2_SELECTS,
     "Smart Plug": (),  # no selects
 }
@@ -345,6 +347,7 @@ SELECT_DESCRIPTIONS_BY_MODEL["Delta Pro Ultra"] = _DPU_SELECTS
 SELECT_DESCRIPTIONS_BY_MODEL["Delta Pro 3"] = ()
 SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Plus"] = _D361_SELECTS
 SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Max"] = _D361_SELECTS
+SELECT_DESCRIPTIONS_BY_MODEL["Delta 3 Max Plus"] = ()   # v0.4.0: no selects known for the flat-key profile
 SELECT_DESCRIPTIONS_BY_MODEL["River 3"] = ()
 SELECT_DESCRIPTIONS_BY_MODEL["River 3 Plus"] = ()
 SELECT_DESCRIPTIONS_BY_MODEL["Stream AC"] = ()
@@ -477,6 +480,34 @@ class EcoFlowSelectEntity(CoordinatorEntity[EcoflowCoordinator], SelectEntity):
             )
             result = client.publish(topic, payload, qos=1)
             _LOGGER.debug("EcoFlow: Proto publish mid=%s rc=%s", result.mid, result.rc)
+            return
+
+        # ── Priority 2.5: Delta Pro 3 JSON envelope (v0.4.0) ─────────────
+        if desc.dp3_cmd_key:
+            client = self._entry_data.get("mqtt_client")
+            topic  = self._entry_data.get("mqtt_topic_set")
+            if not client or not topic:
+                _LOGGER.error("EcoFlow: no MQTT client — cannot send DP3 %s command", desc.key)
+                return
+            from .devices.delta_pro_3 import DP3_CMD_ID, DP3_CMD_FUNC, DP3_DEST, DP3_DIR_DEST, DP3_DIR_SRC
+            cmd = {
+                "sn":       self._sn,
+                "id":       _next_id(),
+                "version":  "1.0",
+                "cmdId":    DP3_CMD_ID,
+                "dirDest":  DP3_DIR_DEST,
+                "dirSrc":   DP3_DIR_SRC,
+                "cmdFunc":  DP3_CMD_FUNC,
+                "dest":     DP3_DEST,
+                "needAck":  True,
+                "params":   {desc.dp3_cmd_key: raw_value},
+            }
+            _LOGGER.info(
+                "EcoFlow: DP3 SET select %s value=%s key=%s topic=%s",
+                desc.key, raw_value, desc.dp3_cmd_key, topic,
+            )
+            result = client.publish(topic, json.dumps(cmd), qos=1)
+            _LOGGER.debug("EcoFlow: DP3 select publish mid=%s rc=%s", result.mid, result.rc)
             return
 
         # ── Priority 3: JSON MQTT SET (fallback) ─────────────────────────

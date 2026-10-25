@@ -1,7 +1,7 @@
 """Device definition for EcoFlow PowerStream (micro-inverter).
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/powerstream.py)
+  - community HA integration (internal/powerstream.py)
   - snell-evan-itt/hassio-ecoflow-cloud-US (confirmed)
 
 Unique protocol — keys prefixed with 20_1.* (module addressing).

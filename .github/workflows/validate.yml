@@ -1,20 +1,31 @@
----
 name: Validate
 
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# The release script used to commit file by file, and every commit started a
+# run of its own. A newer push to the same ref makes the older run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
+  validate-hacs:
+    runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v5
-
       - name: HACS validation
-        uses: hacs/action@main
+        uses: "hacs/action@main"
         with:
-          category: integration
+          category: "integration"
 
-      - name: Hassfest validation
-        uses: home-assistant/actions/hassfest@master
+  validate-hassfest:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v7"
+      - uses: "home-assistant/actions/hassfest@master"

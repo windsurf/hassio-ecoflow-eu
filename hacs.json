@@ -1,6 +1,7 @@
 {
-  "name": "EcoFlow Cloud (EU Delta 3)",
+  "name": "EcoFlow Cloud",
+  "content_in_root": false,
   "render_readme": true,
-  "homeassistant": "2024.4.1",
-  "hacs": "2.0.0"
+  "hide_default_branch": true,
+  "homeassistant": "2025.2.0"
 }

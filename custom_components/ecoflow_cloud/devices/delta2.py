@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Delta 2.
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/delta2.py — confirmed)
+  - community HA integration (internal/delta2.py — confirmed)
   - snell-evan-itt/hassio-ecoflow-cloud-US (internal/delta2.py — confirmed)
   - EcoFlow Developer API documentation (delta2)
 

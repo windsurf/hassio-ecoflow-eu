@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Glacier (portable fridge).
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/glacier.py)
+  - community HA integration (internal/glacier.py)
 
 Uses bms_bmsStatus/bms_emsStatus for battery + pd.* for fridge sensors.
 Commands use JSON protocol (moduleType=1, operateType per command).

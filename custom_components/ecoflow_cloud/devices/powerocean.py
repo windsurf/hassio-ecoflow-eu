@@ -19,7 +19,7 @@ PROTOCOL: Protobuf with multiple message types per cmdFunc:
   - cmdFunc=53, cmdId=113 → ModuleClusterInfo
 
 v0.3.10 STATUS: Minimal device registration only. Full protobuf decoder
-routing for cmdFunc=96/254 not implemented — these will be added in v0.4.0
+routing for cmdFunc=96/254 not implemented — these will be added in a later version
 once test data from a PowerOcean owner is available. The sensor entities
 defined here will activate automatically once decoder support lands.
 

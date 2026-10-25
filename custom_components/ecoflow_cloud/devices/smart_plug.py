@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Smart Plug.
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/smart_plug.py + proto/smartplug.proto)
+  - community HA integration (internal/smart_plug.py + proto/smartplug.proto)
 
 Uses protobuf protocol (cmdFunc=2). Telemetry via WnPlugHeartbeatPack.
 Commands: switch on/off (cmdId=129), brightness (cmdId=130), max watts (cmdId=137).

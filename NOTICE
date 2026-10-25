@@ -1,0 +1,10 @@
+EcoFlow Cloud (Home Assistant integration)
+Copyright 2026 windsurf and the contributors of hassio-ecoflow-eu.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Parts of this work are based on the EcoFlow documentation and Apache-2.0 licensed
+work; see "Inspiration & Acknowledgements" in README2.md.
+
+Derived files, changed from the original: the modules in
+custom_components/ecoflow_cloud/profiles/. The sensor keys, names, units and command
+definitions in these files were rewritten as description entries of this integration.

@@ -17,12 +17,13 @@ _LOGGER = logging.getLogger(__name__)
 
 # SN prefix → (model name, device family)
 # Sorted longest-prefix-first at lookup time for specificity.
-# Sources: EcoFlow developer docs, live MQTT analysis, tolwi/hassio-ecoflow-cloud
+# Sources: EcoFlow developer docs, live MQTT analysis, community HA integration
 _SN_PREFIX_MAP: dict[str, str] = {
     # ── Delta 3 series ───────────────────────────────────────────────────
     "D361":  "Delta 3 1500",
     "D362":  "Delta 3 Plus",
     "D381":  "Delta 3 Max",
+    "D3M1":  "Delta 3 Max Plus",    # v0.4.0 — own flat-key profile (devices/delta3_max_plus.py)
 
     # ── Delta Pro series ─────────────────────────────────────────────────
     "DGEA":  "Delta Pro 3",
@@ -62,7 +63,7 @@ _SN_PREFIX_MAP: dict[str, str] = {
     # All-in-one home battery + hybrid inverter (Tesla Powerwall / Sessy class).
     # v0.3.10: registration + sensor stubs. Full protobuf decoder for
     # cmdFunc=96 (JTS1_EMS_HEARTBEAT) and cmdFunc=254/cmdId=32
-    # (EnergyTotalReport) coming in v0.4.0 once test data is available.
+    # (EnergyTotalReport) coming in a later version once test data is available.
     # SN prefixes are placeholders — update via GitHub issues.
     "PO11":  "PowerOcean",        # single-phase
     "PO31":  "PowerOcean Plus",   # three-phase / commercial variant

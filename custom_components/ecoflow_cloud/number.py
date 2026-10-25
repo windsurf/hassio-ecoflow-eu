@@ -256,7 +256,7 @@ _D361_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Delta 2 — 6 numbers
-# Source: tolwi/hassio-ecoflow-cloud (internal/delta2.py)
+# Source: community HA integration (internal/delta2.py)
 # Differences vs D361: AC charging max 1200W, generator start/stop levels added
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -544,7 +544,7 @@ _DMINI_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
         cmd_params_fn=lambda v: {"slowChgPower": int(v), "id": 69}),
 )
 
-# River Max: 1 number (max charge level only, read-only in tolwi)
+# River Max: 1 number (max charge level only, read-only upstream)
 _RMAX_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
     EcoFlowNumberDescription(key="max_charge_level", name="Max Charge Level", native_unit_of_measurement=PERCENTAGE,
         native_min_value=30, native_max_value=100, native_step=5, mode=NumberMode.SLIDER, icon="mdi:battery-arrow-up",
@@ -825,6 +825,36 @@ _DP3_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
 )
 
 NUMBER_DESCRIPTIONS_BY_MODEL["Delta Pro 3"] = _DP3_NUMBERS
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta 3 Max Plus (D3M1) — DP3 command envelope, flat keys (v0.4.0)
+# Ranges from the EcoFlow Developer docs: charge limit 50-100, discharge limit
+# 0-30, energy backup reserve 0-50.
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta3_max_plus as d3mp_num
+
+_D3MP_NUMBERS: tuple[EcoFlowNumberDescription, ...] = (
+    EcoFlowNumberDescription(
+        key="d3mp_max_chg_soc", name="Charge Limit",
+        native_unit_of_measurement="%", native_min_value=50, native_max_value=100, native_step=1,
+        mode=NumberMode.SLIDER, icon="mdi:battery-charging-high",
+        state_key=d3mp_num.KEY_MAX_CHG_SOC, dp3_cmd_key=d3mp_num.CMD_MAX_CHG_SOC,
+    ),
+    EcoFlowNumberDescription(
+        key="d3mp_min_dsg_soc", name="Discharge Limit",
+        native_unit_of_measurement="%", native_min_value=0, native_max_value=30, native_step=1,
+        mode=NumberMode.SLIDER, icon="mdi:battery-charging-low",
+        state_key=d3mp_num.KEY_MIN_DSG_SOC, dp3_cmd_key=d3mp_num.CMD_MIN_DSG_SOC,
+    ),
+    EcoFlowNumberDescription(
+        key="d3mp_backup_reserve", name="Energy Backup Reserve",
+        native_unit_of_measurement="%", native_min_value=0, native_max_value=50, native_step=1,
+        mode=NumberMode.SLIDER, icon="mdi:battery-heart-outline",
+        state_key=d3mp_num.KEY_BACKUP_SOC, dp3_cmd_key=d3mp_num.CMD_BACKUP_SOC,
+    ),
+)
+NUMBER_DESCRIPTIONS_BY_MODEL["Delta 3 Max Plus"] = _D3MP_NUMBERS
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Delta Pro Ultra (DGEB) — cmdCode protocol (YJ751_PD_*)

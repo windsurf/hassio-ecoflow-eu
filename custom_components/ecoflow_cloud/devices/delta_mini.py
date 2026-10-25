@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Delta Mini.
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/delta_mini.py — confirmed)
+  - community HA integration (internal/delta_mini.py — confirmed)
 
 Gen 1 protocol — same key schema as Delta Pro/Max (bmsMaster/ems).
 No slave battery support. AC charging max 900W.

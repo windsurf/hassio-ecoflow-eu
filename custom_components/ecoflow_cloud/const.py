@@ -1,7 +1,7 @@
 """Constants for EcoFlow Cloud integration."""
 
 DOMAIN              = "ecoflow_cloud"
-INTEGRATION_VERSION = "0.3.10"
+INTEGRATION_VERSION = "0.4.0"
 
 # Config entry keys
 CONF_ACCESS_KEY = "access_key"
@@ -45,6 +45,9 @@ MANUFACTURER = "EcoFlow"
 # Serial number prefixes for which the Developer REST API SET is blocked.
 # EcoFlow returns code=1006 "not allowed to be controlled" for these devices.
 # MQTT JSON SET (with "from":"Android") is the correct control path instead.
+# v0.4.0: D3M1 (Delta 3 Max Plus) is NOT blocked — the Developer API documents SET for it.
+# D3M1 is also not in PRIVATE_API_SN_PREFIXES: Auto-detect uses the Developer API,
+# the only route that reports the AC output state.
 REST_SET_BLOCKED_SN_PREFIXES = (
     "D361",   # Delta 3 / Delta 3 1500 — confirmed blocked (28 March 2026)
     "D362",   # Delta 3 Plus — assumed blocked (same series)
@@ -69,3 +72,6 @@ PRIVATE_API_SN_PREFIXES = (
 # Sentinel value used by EcoFlow in cfgChgWatts to mean "keep current value".
 # The device echoes this back in telemetry — do not write to HA state.
 CHG_WATTS_SENTINEL = 255
+
+# v0.4.0: number of raw MQTT messages kept in memory for the diagnostics download
+MQTT_DIAG_BUFFER_SIZE = 50

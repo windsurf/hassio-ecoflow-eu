@@ -7,13 +7,14 @@ import logging
 import ssl
 import threading
 import time
+from collections import deque
 from typing import Any
 
 import paho.mqtt.client as mqtt
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.const import Platform
+from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 
 from .const import (
     DOMAIN, CONF_ACCESS_KEY, CONF_SECRET_KEY, CONF_DEVICE_SN, CONF_API_HOST,
@@ -21,7 +22,7 @@ from .const import (
     CONF_DEV_ACCESS_KEY, CONF_DEV_SECRET_KEY, CONF_DEV_API_HOST,
     AUTH_MODE_PRIVATE,
     API_HOST_DEFAULT, API_HOST_EU, MQTT_KEEPALIVE, MQTT_RECONNECT_INTERVAL,
-    REST_SET_BLOCKED_SN_PREFIXES,
+    REST_SET_BLOCKED_SN_PREFIXES, MQTT_DIAG_BUFFER_SIZE,
 )
 from .api_client import EcoFlowAPI, EcoFlowPrivateAPI, EcoFlowAPIError
 from .coordinator import EcoflowCoordinator
@@ -29,6 +30,14 @@ from .devices.registry import detect_model
 from .proto_codec import dump_fields, decode_proto_telemetry
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _load_extra_profiles() -> None:
+    """Append the per-device profile modules to the model tables (idempotent)."""
+    from .profiles import load
+    load()
+
+
 PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT, Platform.BUTTON]
 
 # v0.2.19: Delta 3 expects JSON GET (latestQuotas) on /get topic — NOT protobuf.
@@ -136,6 +145,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "api": api, "coordinator": coordinator, "sn": sn,
         "rest_api": dev_api,  # None if no Developer API configured
         "device_model": device_model,
+        "auth_mode": auth_mode,
+        # v0.4.0: ring buffer of raw MQTT messages for the diagnostics download
+        "mqtt_buffer": deque(maxlen=MQTT_DIAG_BUFFER_SIZE),
+        "mqtt_stats": {"messages": 0, "json": 0, "binary": 0, "by_topic": {}},
     }
 
     # ── MQTT topics ───────────────────────────────────────────────────────
@@ -160,11 +173,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         topic_set_reply  = None
         topic_get_reply  = None
         topic_wildcard   = None
+        # v0.4.0: the Developer API documents a set_reply topic for the Delta 3 Max Plus —
+        # subscribe so command results (code / ack) show up in the log.
+        if device_model == "Delta 3 Max Plus":
+            topic_set_reply = f"/open/{mqtt_info.get('certificateAccount', '')}/{sn}/set_reply"
 
     _LOGGER.info(
         "EcoFlow: MQTT host=%s port=%d topic_sub=%s",
         mqtt_host, mqtt_port, topic_sub
     )
+
+    # v0.4.0: topic set and redaction hints for the diagnostics download
+    hass.data[DOMAIN][entry.entry_id].update({
+        "mqtt_host": mqtt_host,
+        "mqtt_topics": {
+            "sub": topic_sub, "get": topic_get, "set": topic_set,
+            "set_reply": topic_set_reply, "get_reply": topic_get_reply,
+            "wildcard": topic_wildcard,
+        },
+        "redact_strings": [s for s in (
+            sn, str(user_id), mqtt_info.get("certificateAccount", ""),
+        ) if s and len(s) >= 4],
+    })
+    _diag_buffer = hass.data[DOMAIN][entry.entry_id]["mqtt_buffer"]
+    _diag_stats  = hass.data[DOMAIN][entry.entry_id]["mqtt_stats"]
 
     # ── Client factory ────────────────────────────────────────────────────
     # v0.2.18: extracted as inner function so recertification can create a
@@ -273,7 +305,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # v0.3.9: Stream AC uses protobuf latestQuotas (separate keepalive loop) and
             # does NOT respond to Delta 3 JSON init. Skip init sequence for Stream AC models.
             # v0.3.10: Wave 3 + Glacier 55 added — same protobuf protocol family, same skip.
-            if device_model in {"Stream AC", "Stream AC Pro", "Stream Ultra", "Wave 3", "Glacier 55"}:
+            # v0.4.0: Delta 3 Max Plus speaks the flat-key / protobuf generation — the Delta 3 JSON
+            # init commands (getBmsInfo, setRtcTime, ...) do not apply and are skipped.
+            if device_model in {"Stream AC", "Stream AC Pro", "Stream Ultra", "Wave 3", "Glacier 55",
+                                "Delta 3 Max Plus"}:
                 _LOGGER.debug(
                     "EcoFlow: skipping JSON init sequence for %s — uses protobuf latestQuotas",
                     device_model,
@@ -300,6 +335,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     def on_message(c, userdata, msg):
         raw_bytes = msg.payload
+
+        # v0.4.0: keep every raw message (full length) for the diagnostics download
+        try:
+            is_json = bool(raw_bytes) and raw_bytes[0] in (0x7B, 0x5B)
+            _diag_buffer.append({
+                "ts": time.time(),
+                "topic": msg.topic,
+                "len": len(raw_bytes),
+                "format": "json" if is_json else "binary",
+                "data": raw_bytes.decode("utf-8", errors="replace") if is_json else raw_bytes.hex(),
+            })
+            _diag_stats["messages"] += 1
+            _diag_stats["json" if is_json else "binary"] += 1
+            _diag_stats["by_topic"][msg.topic] = _diag_stats["by_topic"].get(msg.topic, 0) + 1
+        except Exception as exc:  # never let diagnostics break telemetry
+            _LOGGER.debug("EcoFlow: diagnostics buffer error (non-fatal): %s", exc)
         _LOGGER.debug(
             "EcoFlow: MQTT rx topic=%s len=%d",
             msg.topic, len(raw_bytes),
@@ -377,6 +428,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "EcoFlow: set_reply operateType=%s code=%s ack=%s len=%d",
                 operate_type, http_code, ack, len(raw_bytes),
             )
+            _LOGGER.info("EcoFlow: set_reply payload=%s", str(payload)[:300])
             _LOGGER.debug(
                 "EcoFlow: set_reply full payload=%s",
                 payload,
@@ -582,7 +634,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             device_model, topic_set,
         )
 
+    # v0.4.0: extra profiles (sensors + controls). Imported once, in
+    # an executor job, because the import is blocking; they only extend the model tables.
+    await hass.async_add_executor_job(_load_extra_profiles)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # v0.4.0: the Max Plus dashboard, created once. The flag in the entry keeps a
+    # dashboard the user deleted from coming back; Configure can rebuild it.
+    if device_model == "Delta 3 Max Plus" and not entry.data.get("dashboard_done"):
+        from . import dashboard as _dashboard
+
+        async def _create_dashboard(_event=None) -> None:
+            result = await _dashboard.async_create_dashboard(hass, sn)
+            if result != _dashboard.EXISTS:
+                _dashboard.notify(hass, result)
+            hass.config_entries.async_update_entry(
+                entry, data={**entry.data, "dashboard_done": True}
+            )
+
+        if hass.state is CoreState.running:
+            hass.async_create_task(_create_dashboard())
+        else:
+            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _create_dashboard)
     return True
 
 

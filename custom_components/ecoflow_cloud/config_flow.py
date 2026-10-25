@@ -289,7 +289,22 @@ class EcoFlowOptionsFlow(config_entries.OptionsFlow):
                     vol.In([API_HOST_EU, API_HOST_US, API_HOST_GLOBAL]),
             })
 
+        # v0.4.0: the Max Plus can rebuild its dashboard from here
+        is_max_plus = str(current.get(CONF_DEVICE_SN, "")).upper().startswith("D3M1")
+        if is_max_plus:
+            schema = schema.extend({vol.Optional("replace_dashboard", default=False): cv.boolean})
+
         if user_input is not None:
+            user_input = dict(user_input)
+            replace_dashboard = user_input.pop("replace_dashboard", False)
+            if replace_dashboard:
+                from . import dashboard as _dashboard
+                _dashboard.notify(
+                    self.hass,
+                    await _dashboard.async_create_dashboard(
+                        self.hass, str(current.get(CONF_DEVICE_SN, "")), replace=True
+                    ),
+                )
             new_data = {**current, **{k: v.strip() if isinstance(v, str) else v
                                       for k, v in user_input.items()}}
             # If dev secret key is empty but access key exists, keep old secret

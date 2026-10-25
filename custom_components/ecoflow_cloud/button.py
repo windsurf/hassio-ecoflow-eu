@@ -32,7 +32,7 @@ class EcoFlowButtonDescription(ButtonEntityDescription):
 # ══════════════════════════════════════════════════════════════════════════════
 # Glacier — 3 buttons (Make Small Ice, Make Large Ice, Detach Ice)
 # JSON protocol: moduleType=1, operateType per command
-# Source: tolwi/hassio-ecoflow-cloud (internal/glacier.py buttons())
+# Source: community HA integration (internal/glacier.py buttons())
 # ══════════════════════════════════════════════════════════════════════════════
 
 _GL_BUTTONS: tuple[EcoFlowButtonDescription, ...] = (
@@ -71,6 +71,7 @@ BUTTON_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowButtonDescription, ...]] = 
     "Delta 3 1500": (),
     "Delta 3 Plus": (),
     "Delta 3 Max": (),
+    "Delta 3 Max Plus": (),
     "Delta 2": (),
     "Delta 2 Max": (),
     "Delta Pro": (),

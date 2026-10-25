@@ -1,7 +1,7 @@
 """Device definitions for EcoFlow River 2 / River 2 Max / River 2 Pro.
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/river2.py, river2_max.py, river2_pro.py)
+  - community HA integration (internal/river2.py, river2_max.py, river2_pro.py)
   - snell-evan-itt/hassio-ecoflow-cloud-US (confirmed identical)
 
 Gen 2 protocol — same key schema as Delta 2 (bms_bmsStatus/bms_emsStatus/mppt).

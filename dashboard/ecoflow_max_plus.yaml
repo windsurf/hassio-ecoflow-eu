@@ -1,0 +1,351 @@
+# ============================================================
+# ECOFLOW MAX PLUS DASHBOARD - v0.4.2
+# ============================================================
+#
+# The dashboard the integration creates for the EcoFlow Delta 3 Max Plus,
+# as a hand-made copy: create a new dashboard, open Edit dashboard ->
+# three-dot menu -> Raw configuration editor and replace its content with
+# everything below this comment block.
+#
+# ENTITY IDS: sensor./switch./number.ecoflow_delta_3_max_plus_*
+#   Derived from the device name "EcoFlow Delta 3 Max Plus". Home Assistant
+#   adds a suffix (_2) on a name clash. Check Developer tools -> States,
+#   filtered on "max_plus", and edit the ids here when they differ.
+#
+# ENABLED ENTITIES ONLY: the USB ports, AC Output 2, DC 12V Output, Beep,
+#   X-Boost, Bypass and the BMS values (App Login route) are disabled by
+#   default and are not in this copy. Enable the entity in Settings ->
+#   Devices & services and let the integration build the dashboard instead
+#   (Configure -> Replace the dashboard), or add its card by hand.
+#
+# CHARTS: the History view needs ApexCharts Card from HACS.
+#
+# GAUGES: the power gauges run to 3000 W (GAUGE_MAX_IN_W / GAUGE_MAX_OUT_W
+#   in dashboard.py).
+# ============================================================
+title: EcoFlow Max Plus
+views:
+- title: Overview
+  path: overview
+  type: sections
+  max_columns: 4
+  sections:
+  - type: grid
+    column_span: 4
+    cards:
+    - type: heading
+      heading: EcoFlow Delta 3 Max Plus
+      heading_style: title
+      icon: mdi:power-plug-battery
+      badges:
+      - type: entity
+        entity: sensor.ecoflow_delta_3_max_plus_battery_level
+      - type: entity
+        entity: sensor.ecoflow_delta_3_max_plus_charge_state
+      - type: entity
+        entity: switch.ecoflow_delta_3_max_plus_ac_output
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_battery_level
+      icon: mdi:battery-charging
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_charge_state
+      icon: mdi:battery-sync
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+      icon: mdi:transmission-tower-import
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_total_output_power
+      icon: mdi:transmission-tower-export
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_time_to_full
+      icon: mdi:battery-clock
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_remaining_run_time
+      icon: mdi:timer-sand
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Overview
+      heading_style: title
+      icon: mdi:gauge
+    - type: gauge
+      entity: sensor.ecoflow_delta_3_max_plus_battery_level
+      min: 0
+      max: 100
+      needle: true
+      severity:
+        green: 70
+        yellow: 30
+        red: 0
+      grid_options:
+        columns: 6
+        rows: auto
+    - type: gauge
+      entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+      min: 0
+      max: 3000
+      needle: true
+      severity:
+        green: 0
+        yellow: 1000
+        red: 2000
+      grid_options:
+        columns: 6
+        rows: auto
+    - type: gauge
+      entity: sensor.ecoflow_delta_3_max_plus_total_output_power
+      min: 0
+      max: 3000
+      needle: true
+      severity:
+        green: 0
+        yellow: 1500
+        red: 2500
+      grid_options:
+        columns: 6
+        rows: auto
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Control
+      heading_style: title
+      icon: mdi:tune
+    - type: tile
+      entity: switch.ecoflow_delta_3_max_plus_ac_output
+      icon: mdi:power-socket-eu
+    - type: tile
+      entity: switch.ecoflow_delta_3_max_plus_energy_backup
+      icon: mdi:battery-heart
+    - type: tile
+      entity: number.ecoflow_delta_3_max_plus_charge_limit
+      icon: mdi:battery-charging-high
+      features:
+      - type: numeric-input
+        style: slider
+      features_position: bottom
+      vertical: false
+    - type: tile
+      entity: number.ecoflow_delta_3_max_plus_discharge_limit
+      icon: mdi:battery-charging-low
+      features:
+      - type: numeric-input
+        style: slider
+      features_position: bottom
+      vertical: false
+    - type: tile
+      entity: number.ecoflow_delta_3_max_plus_energy_backup_reserve
+      icon: mdi:battery-heart-outline
+      features:
+      - type: numeric-input
+        style: slider
+      features_position: bottom
+      vertical: false
+  - type: grid
+    column_span: 4
+    cards:
+    - type: heading
+      heading: Power flow
+      heading_style: title
+      icon: mdi:flash
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_ac_input_power
+      icon: mdi:flash
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_solar_input_power
+      icon: mdi:solar-power
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_solar_2_input_power
+      icon: mdi:solar-power
+    - type: tile
+      entity: sensor.ecoflow_delta_3_max_plus_dc_12v_output_power
+      icon: mdi:car-battery
+- title: History
+  path: history
+  type: sections
+  max_columns: 4
+  sections:
+  - type: grid
+    column_span: 4
+    cards:
+    - type: custom:apexcharts-card
+      header:
+        show: true
+        title: Last 30 minutes
+        show_states: true
+        colorize_states: true
+      graph_span: 30min
+      update_interval: 5s
+      yaxis:
+      - id: power
+        min: 0
+        decimals: 0
+        align_to: 500
+        apex_config:
+          title:
+            text: W
+      - id: soc
+        opposite: true
+        min: 0
+        max: 100
+        decimals: 0
+        apex_config:
+          title:
+            text: '%'
+          tickAmount: 4
+      apex_config:
+        legend:
+          show: true
+        chart:
+          height: 260
+      series:
+      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+        name: Input
+        color: '#3fa34d'
+        yaxis_id: power
+        type: area
+        stroke_width: 2
+        curve: smooth
+      - entity: sensor.ecoflow_delta_3_max_plus_total_output_power
+        name: Output
+        color: '#e5732e'
+        yaxis_id: power
+        type: area
+        stroke_width: 2
+        curve: smooth
+      - entity: sensor.ecoflow_delta_3_max_plus_battery_level
+        name: Battery level
+        color: '#4a7fb5'
+        yaxis_id: soc
+        type: line
+        stroke_width: 3
+        curve: smooth
+      grid_options:
+        columns: full
+    - type: custom:apexcharts-card
+      header:
+        show: true
+        title: Last 4 hours
+        show_states: true
+        colorize_states: true
+      graph_span: 4h
+      update_interval: 1min
+      yaxis:
+      - id: power
+        min: 0
+        decimals: 0
+        align_to: 500
+        apex_config:
+          title:
+            text: W
+      - id: soc
+        opposite: true
+        min: 0
+        max: 100
+        decimals: 0
+        apex_config:
+          title:
+            text: '%'
+          tickAmount: 4
+      apex_config:
+        legend:
+          show: true
+        chart:
+          height: 260
+      series:
+      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+        name: Input
+        color: '#3fa34d'
+        yaxis_id: power
+        type: area
+        stroke_width: 2
+        curve: smooth
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.ecoflow_delta_3_max_plus_total_output_power
+        name: Output
+        color: '#e5732e'
+        yaxis_id: power
+        type: area
+        stroke_width: 2
+        curve: smooth
+        group_by:
+          func: avg
+          duration: 1min
+      - entity: sensor.ecoflow_delta_3_max_plus_battery_level
+        name: Battery level
+        color: '#4a7fb5'
+        yaxis_id: soc
+        type: line
+        stroke_width: 3
+        curve: smooth
+        group_by:
+          func: avg
+          duration: 1min
+      grid_options:
+        columns: full
+    - type: custom:apexcharts-card
+      header:
+        show: true
+        title: Last 24 hours
+        show_states: true
+        colorize_states: true
+      graph_span: 24h
+      update_interval: 1min
+      yaxis:
+      - id: power
+        min: 0
+        decimals: 0
+        align_to: 500
+        apex_config:
+          title:
+            text: W
+      - id: soc
+        opposite: true
+        min: 0
+        max: 100
+        decimals: 0
+        apex_config:
+          title:
+            text: '%'
+          tickAmount: 4
+      apex_config:
+        legend:
+          show: true
+        chart:
+          height: 260
+      series:
+      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+        name: Input
+        color: '#3fa34d'
+        yaxis_id: power
+        type: area
+        stroke_width: 2
+        curve: smooth
+        group_by:
+          func: avg
+          duration: 5min
+      - entity: sensor.ecoflow_delta_3_max_plus_total_output_power
+        name: Output
+        color: '#e5732e'
+        yaxis_id: power
+        type: area
+        stroke_width: 2
+        curve: smooth
+        group_by:
+          func: avg
+          duration: 5min
+      - entity: sensor.ecoflow_delta_3_max_plus_battery_level
+        name: Battery level
+        color: '#4a7fb5'
+        yaxis_id: soc
+        type: line
+        stroke_width: 3
+        curve: smooth
+        group_by:
+          func: avg
+          duration: 5min
+      grid_options:
+        columns: full

@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Wave 2 (portable AC).
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/wave2.py)
+  - community HA integration (internal/wave2.py)
 
 Uses bms.* for battery + pd.* for AC/climate sensors + power.* for power.
 Commands use JSON protocol (moduleType=1, operateType per command).

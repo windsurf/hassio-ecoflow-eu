@@ -81,6 +81,10 @@ class EcoFlowSwitchDescription(SwitchEntityDescription):
     # show_flag_bit: if >= 0, extract this bit from the state_key value for is_on
     # Used by DPU where showFlag is a bit field (e.g. bit 2 = AC, bit 5 = DC)
     show_flag_bit:  int                      = -1
+    # v0.4.0: raw values for "on" and "off" (default 1/0). The Delta 3 Max Plus
+    # reports outputs as flowInfo* where 4 = off and any other value = on.
+    on_value:       int                      = 1
+    off_value:      int                      = 0
 
 
 
@@ -260,7 +264,7 @@ _D361_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Delta 2 — 8 switches
-# Source: tolwi/hassio-ecoflow-cloud (internal/delta2.py)
+# Source: community HA integration (internal/delta2.py)
 # All commands identical to Delta 3 1500 subset
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -361,7 +365,7 @@ from .devices.delta2_max import (
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Delta 2 Max — 7 switches
-# Source: tolwi/hassio-ecoflow-cloud (internal/delta2_max.py)
+# Source: community HA integration (internal/delta2_max.py)
 # Key differences: beep on pd.beepMode, AC via inv module (3), newAcAutoOnCfg
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -691,10 +695,58 @@ _DP3_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
     ),
 )
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Delta 3 Max Plus (D3M1) — DP3 command envelope, flat keys (v0.4.0)
+# Source: EcoFlow Developer docs (Delta 3 Max Plus)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .devices import delta3_max_plus as d3mp
+
+_D3MP_SWITCHES: tuple[EcoFlowSwitchDescription, ...] = (
+    EcoFlowSwitchDescription(
+        key="d3mp_ac_out", name="AC Output", icon="mdi:power-socket-eu",
+        state_key=d3mp.KEY_AC_OUT, dp3_cmd_key=d3mp.CMD_AC_OUT,
+        on_value=d3mp.FLOW_ON, off_value=d3mp.FLOW_OFF, optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="d3mp_energy_backup", name="Energy Backup", icon="mdi:battery-heart",
+        state_key=d3mp.KEY_ENERGY_BACKUP, dp3_cmd_key=d3mp.CMD_ENERGY_BACKUP,
+        cmd_params=lambda on: {"energyBackupEn": bool(on)}, optimistic=True,
+    ),
+    EcoFlowSwitchDescription(
+        key="d3mp_ac2_out", name="AC Output 2", icon="mdi:power-socket-eu",
+        state_key=d3mp.KEY_AC2_OUT, dp3_cmd_key=d3mp.CMD_AC2_OUT,
+        on_value=d3mp.FLOW_ON, off_value=d3mp.FLOW_OFF, optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="d3mp_dc12v_out", name="DC 12V Output", icon="mdi:car-battery",
+        state_key=d3mp.KEY_DC12V_OUT, dp3_cmd_key=d3mp.CMD_DC12V_OUT,
+        on_value=d3mp.FLOW_ON, off_value=d3mp.FLOW_OFF, optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="d3mp_beep", name="Beep Sound", icon="mdi:volume-high",
+        state_key=d3mp.KEY_BEEP, dp3_cmd_key=d3mp.CMD_BEEP, optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="d3mp_xboost", name="X-Boost", icon="mdi:lightning-bolt",
+        state_key=d3mp.KEY_XBOOST, dp3_cmd_key=d3mp.CMD_XBOOST, optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+    EcoFlowSwitchDescription(
+        key="d3mp_bypass_disable", name="Bypass Output Disabled", icon="mdi:transmission-tower-off",
+        state_key=d3mp.KEY_BYPASS_DISABLE, dp3_cmd_key=d3mp.CMD_BYPASS_DISABLE, optimistic=True,
+        entity_registry_enabled_default=False,
+    ),
+)
+
 SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = {
     "Delta 3 1500": _D361_SWITCHES,
     "Delta 3 Plus": _D361_SWITCHES,
     "Delta 3 Max": _D361_SWITCHES,
+    "Delta 3 Max Plus": _D3MP_SWITCHES,
     "Delta 2": _D2_SWITCHES,
     "Delta 2 Max": _D2M_SWITCHES,
     "Delta Pro": _DPRO_SWITCHES,
@@ -710,7 +762,7 @@ SWITCH_DESCRIPTIONS_BY_MODEL: dict[str, tuple[EcoFlowSwitchDescription, ...]] = 
     "PowerStream 600W": _PS_SWITCHES,
     "PowerStream 800W": _PS_SWITCHES,
     "Glacier": _GL_SWITCHES,
-    "Wave 2": (),  # no switches (tolwi confirms empty)
+    "Wave 2": (),  # no switches (reference confirms empty)
     "Smart Plug": _SP_SWITCHES,
     "Delta Pro 3": _DP3_SWITCHES,
 }
@@ -1051,7 +1103,7 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
             # Most devices: 0=off, 1=on
             # River 3 flow keys: 0=off, 2=on
             # Using != 0 covers both conventions safely
-            active = int(val) != 0
+            active = int(val) != self.entity_description.off_value
         return (not active) if self.entity_description.inverted else active
 
     @property
@@ -1223,13 +1275,15 @@ class EcoFlowSwitchEntity(CoordinatorEntity[EcoflowCoordinator], SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._publish, True)
         if self.entity_description.optimistic:
-            raw = 0 if self.entity_description.inverted else 1
+            raw = (self.entity_description.off_value if self.entity_description.inverted
+                   else self.entity_description.on_value)
             self.coordinator.data[self.entity_description.state_key] = raw
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._publish, False)
         if self.entity_description.optimistic:
-            raw = 1 if self.entity_description.inverted else 0
+            raw = (self.entity_description.on_value if self.entity_description.inverted
+                   else self.entity_description.off_value)
             self.coordinator.data[self.entity_description.state_key] = raw
             self.async_write_ha_state()

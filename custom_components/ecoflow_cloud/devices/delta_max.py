@@ -1,7 +1,7 @@
 """Device definition for EcoFlow Delta Max.
 
 MQTT key sources:
-  - tolwi/hassio-ecoflow-cloud (internal/delta_max.py — confirmed)
+  - community HA integration (internal/delta_max.py — confirmed)
   - snell-evan-itt/hassio-ecoflow-cloud-US (internal/delta_max.py — confirmed)
 
 Gen 1 protocol — same key schema as Delta Pro (bmsMaster/ems/bmsSlave).

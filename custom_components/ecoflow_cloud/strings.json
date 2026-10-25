@@ -5,8 +5,8 @@
         "title": "EcoFlow Cloud – Setup",
         "description": "Add your EcoFlow device. **Auto-detect** (recommended) automatically chooses the correct API based on your serial number.",
         "data": {
-          "device_sn":  "Device Serial Number",
-          "auth_mode":  "Connection Method"
+          "device_sn": "Device Serial Number",
+          "auth_mode": "Connection Method"
         },
         "data_description": {
           "device_sn": "Printed on the device label or visible in the EcoFlow app under Device Info",
@@ -25,7 +25,7 @@
         "title": "EcoFlow Cloud – App Login",
         "description": "{hint}",
         "data": {
-          "email":    "EcoFlow Account Email",
+          "email": "EcoFlow Account Email",
           "password": "EcoFlow Account Password"
         }
       },
@@ -62,12 +62,13 @@
         "data": {
           "access_key": "Access Key",
           "secret_key": "Secret Key",
-          "email":      "EcoFlow Account Email",
-          "password":   "EcoFlow Account Password",
-          "device_sn":  "Device Serial Number",
-          "api_host":   "API Server",
+          "email": "EcoFlow Account Email",
+          "password": "EcoFlow Account Password",
+          "device_sn": "Device Serial Number",
+          "api_host": "API Server",
           "dev_access_key": "Developer Access Key (optional, for REST control)",
-          "dev_secret_key": "Developer Secret Key"
+          "dev_secret_key": "Developer Secret Key",
+          "replace_dashboard": "Replace the dashboard with a fresh one (Delta 3 Max Plus; your edits to it are lost)"
         }
       }
     },
