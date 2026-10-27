@@ -50,8 +50,8 @@ A manual copy of the dashboard is in [`dashboard/ecoflow_max_plus.yaml`](dashboa
 | **Delta 3 Max Plus** | `D3M1` | ✅ Tested by the author: reading and control |
 | **Delta 3 1500** | `D361` | ✅ Tested by the author (earlier versions) |
 | Delta 3 Plus · Delta 3 Max | `D362` · `D381` | 🧪 Profile based on the Delta 3 1500 |
-| Delta Pro 3 · Delta Pro Ultra · Delta Pro · Delta Max · Delta Mini · Delta 2 · Delta 2 Max | `DGEA` · `DGEB` · `DAEB` · `DCAB` · `DAAZ` · `R331` · `R351` | 🧪 Profile available |
-| River 3 · River 3 Plus · River 2 · River 2 Max · River 2 Pro · River Max · River Pro · River Mini | `R641` · `R651` · `R621` · `R631` · `R622` · `R601` · `R602` · `R501` | 🧪 Profile available |
+| Delta Pro 3 · Delta Pro Ultra · Delta Pro · Delta Max · Delta Mini · Delta 2 · Delta 2 Max | `DGEA` · `DGEB` · `DAEB` · `DCAB` · `DAAZ` `DBEB` `DBKB` · `R331` · `R351` | 🧪 Profile available |
+| River 3 · River 3 Plus · River 2 · River 2 Max · River 2 Pro · River Max · River Pro · River Mini | `R641` `R655` · `R651` `R631` · `R621` · `R611` · `R622` · `R601` · `R602` · `R501` | 🧪 Profile available |
 | PowerStream · Smart Plug · Stream AC · Stream AC Pro · Stream Ultra | `HW51` `HW52` `BKW` · `SP10` · `BK` · `BK31` · `BK11` | 🧪 Profile available |
 | Glacier · Glacier 55 · Wave 2 · Wave 3 | `BX11` · `BX55` · `KT21` · `KT3` | 🧪 Profile available |
 | Smart Home Panel · Smart Home Panel 2 · PowerKit · PowerOcean (3 variants) | `SH10` · `SH20` · `M106` · `PO11` `PO31` `POFI` | 🔶 Partly supported, see the [technical reference](README2.md#device-support-v0310) |

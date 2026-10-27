@@ -341,11 +341,11 @@ logger:
 | Delta 2 | R331 | Gen 2 moduleType | ~50 | 8 | 6 | 5 | ✅ Full control |
 | Delta 2 Max | R351 | Gen 2 moduleType | ~50 | 7 | 6 | 4 | ✅ Full control |
 | Delta Max | DCAB | Gen 1 TCP | ~30 | 4 | 4 | — | ✅ Full control |
-| Delta Mini | DAAZ | Gen 1 TCP | ~18 | 1 | 2 | 3 | ✅ Full control |
-| River 3 | R641 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
-| River 3 Plus | R651 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
+| Delta Mini | DAAZ, DBEB, DBKB | Gen 1 TCP | ~18 | 1 | 2 | 3 | ✅ Full control |
+| River 3 | R641, R655 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
+| River 3 Plus | R651, R631 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
 | River 2 | R621 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
-| River 2 Max | R631 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
+| River 2 Max | R611 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
 | River 2 Pro | R622 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
 | River Max | R601 | Gen 1 TCP | ~28 | 2 | 2 | 2 | ✅ Full control |
 | River Pro | R602 | Gen 1 TCP | ~32 | 2 | 2 | 2 | ✅ Full control |
@@ -379,6 +379,15 @@ Protocol variants: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobu
 This integration is licensed under the Apache License 2.0 (see [LICENSE](LICENSE)). Some definitions are derived from a community project that uses the same license; see [NOTICE](NOTICE) and *Inspiration & Acknowledgements* below.
 
 ## Changelog
+
+### v0.4.1 -- Serial prefixes corrected
+
+- `R631` is recognised as River 3 Plus (was River 2 Max); the River 2 Max is `R611`. `R655` is recognised as River 3. Both River 3 prefixes follow the River 3 route (App Login in Auto-detect; REST SET blocked). Reported in issue #1.
+- `DBEB` and `DBKB` are recognised as Delta Mini. Reported in issue #2. EcoFlow may refuse the REST quota call for this device (error 1006); the values then arrive over MQTT only.
+- Open API route: the periodic recertification (every 10 minutes) now runs only on the App Login route. On the Open API route it could only skip, which logged the warning `recertification returned empty client_id` twice per cycle and called EcoFlow for nothing.
+- Remove the integration entry and add it again to apply the corrected model to an existing device.
+- Untested on real devices: neither the River 3 Plus nor the Delta mini is owned by the author.
+- **Dashboard:** the Overview tab follows the hand-tuned layout (header with badges, gauges, a *Control* section with the three output switches, Energy Backup and the three limit sliders, and a smaller *Power flow* section; the USB and battery sections are gone). AC Output 2 and DC 12V Output are disabled by default: enable them to get their tiles. The three History charts now have a heading each, output above and input below the zero line, a dashed battery level, a power axis that scales with the data (no fixed 3000 W) and a 5-minute mean for the last 24 hours. Press **Configure → Replace the dashboard with a fresh one** to get the new layout; `dashboard/ecoflow_max_plus.yaml` is regenerated.
 
 ### v0.4.0 -- Delta 3 Max Plus, diagnostics, dashboard, device profiles
 

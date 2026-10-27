@@ -37,10 +37,14 @@ _SN_PREFIX_MAP: dict[str, str] = {
     # ── Delta 1 series ───────────────────────────────────────────────────
     "DCAB":  "Delta Max",
     "DAAZ":  "Delta Mini",
+    "DBEB":  "Delta Mini",          # v0.4.1 — reporter serial DBEBZ5XDA..., API names it "DELTA mini" (issue #2)
+    "DBKB":  "Delta Mini",          # v0.4.1 — DBKBZ5XDA... from a Delta mini diagnostics dump
 
     # ── River 3 series ───────────────────────────────────────────────────
     "R641":  "River 3",
     "R651":  "River 3 Plus",
+    "R655":  "River 3",             # v0.4.1 — recorded River 3 serial prefix
+    "R631":  "River 3 Plus",        # v0.4.1 — was River 2 Max; a River 3 Plus owner reported R631 (issue #1)
 
     # ── Stream AC series (grid-tied micro-inverter) ─────────────────────
     "BK31":  "Stream AC Pro",
@@ -71,7 +75,7 @@ _SN_PREFIX_MAP: dict[str, str] = {
 
     # ── River 2 series ───────────────────────────────────────────────────
     "R621":  "River 2",
-    "R631":  "River 2 Max",
+    "R611":  "River 2 Max",         # v0.4.1 — was R631
     "R622":  "River 2 Pro",
 
     # ── River 1 series ───────────────────────────────────────────────────

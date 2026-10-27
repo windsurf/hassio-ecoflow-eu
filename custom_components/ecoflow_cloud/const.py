@@ -1,7 +1,7 @@
 """Constants for EcoFlow Cloud integration."""
 
 DOMAIN              = "ecoflow_cloud"
-INTEGRATION_VERSION = "0.4.0"
+INTEGRATION_VERSION = "0.4.1"
 
 # Config entry keys
 CONF_ACCESS_KEY = "access_key"
@@ -54,6 +54,8 @@ REST_SET_BLOCKED_SN_PREFIXES = (
     "D381",   # Delta 3 Max — assumed blocked (same series)
     "R641",   # River 3 — assumed blocked
     "R651",   # River 3 Plus — assumed blocked
+    "R655",   # River 3 (v0.4.1) — same series
+    "R631",   # River 3 Plus (v0.4.1) — same series
 )
 
 PRIVATE_API_SN_PREFIXES = (
@@ -62,6 +64,8 @@ PRIVATE_API_SN_PREFIXES = (
     "D381",   # Delta 3 Max (tentative)
     "R641",   # River 3
     "R651",   # River 3 Plus (tentative)
+    "R655",   # River 3 (v0.4.1)
+    "R631",   # River 3 Plus (v0.4.1)
     "BKW",    # PowerStream micro-inverter
     "HW51",   # PowerStream 600W
     "HW52",   # PowerStream 800W

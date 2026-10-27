@@ -572,7 +572,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.data[DOMAIN][entry.entry_id]["mqtt_client"] = new_client
             _LOGGER.info("EcoFlow: new MQTT client active (client_id=%s)", new_cid)
 
-    hass.loop.create_task(_recertify_loop())
+    # v0.4.1: only the App Login route issues a client_id per certificate. The
+    # Open API route has none, so the loop could only skip every cycle (and log
+    # a warning each time) while calling EcoFlow every 10 minutes for nothing.
+    if mqtt_info.get("_client_id"):
+        hass.loop.create_task(_recertify_loop())
+    else:
+        _LOGGER.debug("EcoFlow: Open API route - no periodic recertification")
 
     # ── JSON GET keepalive ────────────────────────────────────────────────
     # v0.2.19: Send JSON latestQuotas GET every 20s to keep session alive.

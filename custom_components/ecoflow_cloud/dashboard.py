@@ -1,11 +1,12 @@
-"""The EcoFlow Max Plus dashboard: created on request, never overwritten (v0.4.0).
+"""The EcoFlow Max Plus dashboard: created on request, never overwritten (v0.4.1).
 
 Two views for the Delta 3 Max Plus:
 
   Overview  - battery level, power in and out, charge state, the switches and
-              the three limits, every power flow of the device.
+              the three limits, the main power flows.
   History   - three charts (apexcharts-card from HACS): the last 30 minutes,
-              4 hours and 24 hours of power in, power out and battery level.
+              4 hours and 24 hours of power out (above zero), power in (below
+              zero) and battery level, in the style of the Zendure RestAPI view.
               Without apexcharts-card a notice takes the place of the charts.
 
 The cards are built in this module from "slots": a slot is one entity of the
@@ -15,7 +16,7 @@ entity does not exist or is disabled (the USB ports, the BMS values of the App
 Login route) leaves its card out.
 
 The same builder, run with the default entity ids, produces the hand-made
-copy in dashboard/ecoflow_max_plus.yaml (tools: see CHANGELOG v0.4.0).
+copy in dashboard/ecoflow_max_plus.yaml (see README2).
 
 Home Assistant has no public call for an integration to add a dashboard. The
 dashboards collection is reached through the handler of the websocket command
@@ -80,8 +81,8 @@ SLOTS: dict[str, tuple[str, str, str, bool]] = {
     "ac_max_chg": ("sensor", "plugInInfoAcInChgPowMax", "AC Max Charging Power", False),
     "ac_out":     ("switch", "d3mp_ac_out",        "AC Output",              True),
     "backup":     ("switch", "d3mp_energy_backup", "Energy Backup",          True),
-    "ac2_out":    ("switch", "d3mp_ac2_out",       "AC Output 2",            False),
-    "dc12_out":   ("switch", "d3mp_dc12v_out",     "DC 12V Output",          False),
+    "ac2_out":    ("switch", "d3mp_ac2_out",       "AC Output 2",            True),
+    "dc12_out":   ("switch", "d3mp_dc12v_out",     "DC 12V Output",          True),
     "beep":       ("switch", "d3mp_beep",          "Beep Sound",             False),
     "xboost":     ("switch", "d3mp_xboost",        "X-Boost",                False),
     "bypass":     ("switch", "d3mp_bypass_disable", "Bypass Output Disabled", False),
@@ -120,7 +121,8 @@ def resolve_ids(hass: HomeAssistant, sn: str) -> IDS:
 # ── Card builders ───────────────────────────────────────────────────────────
 
 def _tile(ids: IDS, slot: str, icon: str | None = None, *, slider: bool = False,
-          name: str | None = None, state_content: str | list[str] | None = None) -> dict | None:
+          name: str | None = None, state_content: str | list[str] | None = None,
+          horizontal: bool = False) -> dict | None:
     entity = ids.get(slot)
     if not entity:
         return None
@@ -134,6 +136,7 @@ def _tile(ids: IDS, slot: str, icon: str | None = None, *, slider: bool = False,
     if slider:
         card["features"] = [{"type": "numeric-input", "style": "slider"}]
         card["features_position"] = "bottom"
+    if slider or horizontal:
         card["vertical"] = False
     return card
 
@@ -171,47 +174,80 @@ def _section(span: int, *cards: dict | None) -> dict | None:
     return {"type": "grid", "column_span": span, "cards": kept}
 
 
-def _series(ids: IDS, slot: str, name: str, color: str, axis: str, kind: str,
-            width: int = 2) -> dict | None:
+# Look of the charts follows the Zendure RestAPI history view: output above the
+# zero line, input (charging) below it, battery level dashed on its own axis.
+COLOR_IN, COLOR_OUT, COLOR_SOC = "#E53935", "#4CAF50", "#9575CD"
+
+# Soft bounds ("~"): the axis always shows zero and grows with the data, so a
+# small load gives a small scale instead of a fixed +/-3000 W.
+_POWER_AXIS = {
+    "id": "power", "min": "~0", "max": "~0", "decimals": 0, "align_to": 100,
+}
+_SOC_AXIS = {
+    "id": "soc", "opposite": True, "min": 0, "max": 100, "decimals": 0,
+    "apex_config": {"tickAmount": 4, "labels": {"style": {"fontSize": "10px"}}},
+}
+
+
+def _series(ids: IDS, slot: str, name: str, color: str, axis: str, *, invert: bool = False,
+            line: bool = False, curve: str, stats: bool, group: str | None) -> dict | None:
     entity = ids.get(slot)
     if not entity:
         return None
-    return {
+    s: dict[str, Any] = {
         "entity": entity, "name": name, "color": color, "yaxis_id": axis,
-        "type": kind, "stroke_width": width, "curve": "smooth",
+        "type": "line" if line else "area", "curve": curve, "float_precision": 0,
+        "extend_to": "now", "show": {"in_header": False, "legend_value": False},
     }
+    if line:
+        s["stroke_width"] = 2
+        s["stroke_dash"] = 4
+    else:
+        s["opacity"] = 0.3
+        s["stroke_width"] = 1
+    if invert:
+        s["transform"] = "return x * -1;"
+    if stats:
+        s["statistics"] = {"type": "mean", "period": "5minute", "align": "middle"}
+    elif group:
+        s["group_by"] = {"func": "avg", "duration": group, "fill": "last"}
+    return s
 
 
-COLOR_IN, COLOR_OUT, COLOR_SOC = "#3fa34d", "#e5732e", "#4a7fb5"
-
-
-def _chart(ids: IDS, title: str, span: str, group: str | None) -> dict | None:
+def _chart(ids: IDS, span: str, group: str | None, *, stats: bool, curve: str,
+           update: str | None, tooltip: str) -> dict | None:
+    kw = {"curve": curve, "stats": stats, "group": group}
     series = [
-        _series(ids, "in_w",  "Input",         COLOR_IN,  "power", "area"),
-        _series(ids, "out_w", "Output",        COLOR_OUT, "power", "area"),
-        _series(ids, "soc",   "Battery level", COLOR_SOC, "soc",   "line", 3),
+        _series(ids, "out_w", "Output", COLOR_OUT, "power", **kw),
+        _series(ids, "in_w", "Input", COLOR_IN, "power", invert=True, **kw),
+        _series(ids, "soc", "Battery level", COLOR_SOC, "soc", line=True, **kw),
     ]
-    series = [s for s in series if s]
+    series = [x for x in series if x]
     if not series:
         return None
-    if group:
-        for s in series:
-            s["group_by"] = {"func": "avg", "duration": group}
-    return {
+    card: dict[str, Any] = {
         "type": "custom:apexcharts-card",
-        "header": {"show": True, "title": title, "show_states": True, "colorize_states": True},
+        "header": {"show": False},
         "graph_span": span,
-        "update_interval": "5s" if span == "30min" else "1min",
-        "yaxis": [
-            {"id": "power", "min": 0, "decimals": 0, "align_to": 500,
-             "apex_config": {"title": {"text": "W"}}},
-            {"id": "soc", "opposite": True, "min": 0, "max": 100, "decimals": 0,
-             "apex_config": {"title": {"text": "%"}, "tickAmount": 4}},
-        ],
-        "apex_config": {"legend": {"show": True}, "chart": {"height": 260}},
-        "series": series,
-        "grid_options": {"columns": "full"},
     }
+    if span != "24h":
+        card["now"] = {"show": True}
+    if update:
+        card["update_interval"] = update
+    card.update({
+        "yaxis": [_POWER_AXIS, _SOC_AXIS],
+        "apex_config": {
+            "chart": {"height": 240},
+            "legend": {"show": True},
+            "tooltip": {"x": {"format": tooltip}},
+            "grid": {"borderColor": "rgba(127, 127, 127, 0.25)", "strokeDashArray": 0},
+            "fill": {"type": "solid"},
+        },
+        "series": series,
+        "grid_options": {"columns": "full", "rows": "auto"},
+        "hours_12": False,
+    })
+    return card
 
 
 def build_config(ids: IDS, custom_cards: set[str] | None = None) -> dict[str, Any]:
@@ -242,16 +278,13 @@ def build_config(ids: IDS, custom_cards: set[str] | None = None) -> dict[str, An
     controls = _section(
         2,
         _heading("Control", "mdi:tune"),
-        _tile(ids, "ac_out", "mdi:power-socket-eu"),
+        _tile(ids, "ac_out", "mdi:power-socket-eu", horizontal=True),
+        _tile(ids, "ac2_out", "mdi:power-socket-eu", horizontal=True),
+        _tile(ids, "dc12_out", "mdi:power-socket-eu", horizontal=True),
         _tile(ids, "backup", "mdi:battery-heart"),
         _tile(ids, "chg_limit", "mdi:battery-charging-high", slider=True),
         _tile(ids, "dsg_limit", "mdi:battery-charging-low", slider=True),
         _tile(ids, "reserve", "mdi:battery-heart-outline", slider=True),
-        _tile(ids, "ac2_out", "mdi:power-socket-eu"),
-        _tile(ids, "dc12_out", "mdi:car-battery"),
-        _tile(ids, "xboost", "mdi:lightning-bolt"),
-        _tile(ids, "bypass", "mdi:transmission-tower-off"),
-        _tile(ids, "beep", "mdi:volume-high"),
     )
     flows = _section(
         4,
@@ -259,40 +292,32 @@ def build_config(ids: IDS, custom_cards: set[str] | None = None) -> dict[str, An
         _tile(ids, "ac_in", "mdi:flash"),
         _tile(ids, "pv1", "mdi:solar-power"),
         _tile(ids, "pv2", "mdi:solar-power"),
-        _tile(ids, "dcp", "mdi:flash"),
         _tile(ids, "dc12", "mdi:car-battery"),
-        _tile(ids, "usba1", "mdi:usb-port"),
-        _tile(ids, "usba2", "mdi:usb-port"),
-        _tile(ids, "usbc1", "mdi:usb-c-port"),
-        _tile(ids, "usbc2", "mdi:usb-c-port"),
-        _tile(ids, "usbc3", "mdi:usb-c-port"),
-    )
-    battery = _section(
-        4,
-        _heading("Battery (App Login route)", "mdi:battery-heart-variant"),
-        _tile(ids, "bms_soc", "mdi:battery"),
-        _tile(ids, "temp_max", "mdi:thermometer-high"),
-        _tile(ids, "temp_min", "mdi:thermometer-low"),
-        _tile(ids, "ac_max_chg", "mdi:flash"),
     )
     overview = {
         "title": "Overview", "path": "overview", "type": "sections", "max_columns": 4,
-        "sections": [s for s in (header, gauges, controls, flows, battery) if s],
+        "sections": [s for s in (header, gauges, controls, flows) if s],
     }
 
-    charts: list[dict | None] = [
-        _chart(ids, "Last 30 minutes", "30min", None),
-        _chart(ids, "Last 4 hours", "4h", "1min"),
-        _chart(ids, "Last 24 hours", "24h", "5min"),
+    charts: list[tuple[str, str, dict | None]] = [
+        ("Last 30 minutes", "mdi:pulse",
+         _chart(ids, "30min", "10s", stats=False, curve="straight", update="10s", tooltip="HH:mm:ss")),
+        ("Last 4 hours", "mdi:clock-outline",
+         _chart(ids, "4h", "10s", stats=False, curve="straight", update="1min", tooltip="HH:mm")),
+        ("Last 24 hours", "mdi:history",
+         _chart(ids, "24h", None, stats=True, curve="monotoneCubic", update=None, tooltip="dd-MM HH:mm")),
     ]
     have_apex = custom_cards is None or "custom:apexcharts-card" in custom_cards
-    cards: list[dict | None] = []
+    sections: list[dict] = []
     if have_apex:
-        for chart in charts:
+        for title, icon, chart in charts:
             if chart:
-                cards.append(chart)
-    else:
-        cards.append({
+                sections.append({
+                    "type": "grid", "column_span": 4,
+                    "cards": [_heading(title, icon), chart],
+                })
+    elif any(c for _t, _i, c in charts):
+        sections.append({"type": "grid", "column_span": 4, "cards": [{
             "type": "markdown",
             "content": (
                 "The charts on this tab need **ApexCharts Card** from HACS. Install it, "
@@ -300,11 +325,10 @@ def build_config(ids: IDS, custom_cards: set[str] | None = None) -> dict[str, An
                 "*Replace the dashboard with a fresh one*."
             ),
             "grid_options": {"columns": "full"},
-        })
-    history_section = {"type": "grid", "column_span": 4, "cards": [c for c in cards if c]}
+        }]})
     history = {
         "title": "History", "path": "history", "type": "sections", "max_columns": 4,
-        "sections": [history_section] if history_section["cards"] else [],
+        "sections": sections,
     }
     views = [overview] + ([history] if history["sections"] and (soc or in_w or out_w) else [])
     return {"title": DASHBOARD_TITLE, "views": views}

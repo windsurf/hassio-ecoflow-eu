@@ -1,5 +1,5 @@
 # ============================================================
-# ECOFLOW MAX PLUS DASHBOARD - v0.4.2
+# ECOFLOW MAX PLUS DASHBOARD - v0.4.1
 # ============================================================
 #
 # The dashboard the integration creates for the EcoFlow Delta 3 Max Plus,
@@ -12,11 +12,10 @@
 #   adds a suffix (_2) on a name clash. Check Developer tools -> States,
 #   filtered on "max_plus", and edit the ids here when they differ.
 #
-# ENABLED ENTITIES ONLY: the USB ports, AC Output 2, DC 12V Output, Beep,
-#   X-Boost, Bypass and the BMS values (App Login route) are disabled by
-#   default and are not in this copy. Enable the entity in Settings ->
-#   Devices & services and let the integration build the dashboard instead
-#   (Configure -> Replace the dashboard), or add its card by hand.
+# AC OUTPUT 2 AND DC 12V OUTPUT: these two switches are disabled by default.
+#   Enable them in Settings -> Devices & services, or delete their tiles.
+#   The USB ports, Beep, X-Boost, Bypass and the BMS values (App Login route)
+#   are not in this dashboard; add their cards by hand if you want them.
 #
 # CHARTS: the History view needs ApexCharts Card from HACS.
 #
@@ -115,6 +114,15 @@ views:
     - type: tile
       entity: switch.ecoflow_delta_3_max_plus_ac_output
       icon: mdi:power-socket-eu
+      vertical: false
+    - type: tile
+      entity: switch.ecoflow_delta_3_max_plus_ac_output_2
+      icon: mdi:power-socket-eu
+      vertical: false
+    - type: tile
+      entity: switch.ecoflow_delta_3_max_plus_dc_12v_output
+      icon: mdi:power-socket-eu
+      vertical: false
     - type: tile
       entity: switch.ecoflow_delta_3_max_plus_energy_backup
       icon: mdi:battery-heart
@@ -169,183 +177,273 @@ views:
   - type: grid
     column_span: 4
     cards:
+    - type: heading
+      heading: Last 30 minutes
+      heading_style: title
+      icon: mdi:pulse
     - type: custom:apexcharts-card
       header:
-        show: true
-        title: Last 30 minutes
-        show_states: true
-        colorize_states: true
+        show: false
       graph_span: 30min
-      update_interval: 5s
+      now:
+        show: true
+      update_interval: 10s
       yaxis:
-      - id: power
-        min: 0
+      - &id001
+        id: power
+        min: ~0
+        max: ~0
         decimals: 0
-        align_to: 500
-        apex_config:
-          title:
-            text: W
-      - id: soc
+        align_to: 100
+      - &id002
+        id: soc
         opposite: true
         min: 0
         max: 100
         decimals: 0
         apex_config:
-          title:
-            text: '%'
           tickAmount: 4
+          labels:
+            style:
+              fontSize: 10px
       apex_config:
+        chart:
+          height: 240
         legend:
           show: true
-        chart:
-          height: 260
+        tooltip:
+          x:
+            format: HH:mm:ss
+        grid:
+          borderColor: rgba(127, 127, 127, 0.25)
+          strokeDashArray: 0
+        fill:
+          type: solid
       series:
-      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
-        name: Input
-        color: '#3fa34d'
-        yaxis_id: power
-        type: area
-        stroke_width: 2
-        curve: smooth
       - entity: sensor.ecoflow_delta_3_max_plus_total_output_power
         name: Output
-        color: '#e5732e'
+        color: '#4CAF50'
         yaxis_id: power
         type: area
-        stroke_width: 2
-        curve: smooth
+        curve: straight
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        opacity: 0.3
+        stroke_width: 1
+        group_by:
+          func: avg
+          duration: 10s
+          fill: last
+      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+        name: Input
+        color: '#E53935'
+        yaxis_id: power
+        type: area
+        curve: straight
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        opacity: 0.3
+        stroke_width: 1
+        transform: return x * -1;
+        group_by:
+          func: avg
+          duration: 10s
+          fill: last
       - entity: sensor.ecoflow_delta_3_max_plus_battery_level
         name: Battery level
-        color: '#4a7fb5'
+        color: '#9575CD'
         yaxis_id: soc
         type: line
-        stroke_width: 3
-        curve: smooth
+        curve: straight
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        stroke_width: 2
+        stroke_dash: 4
+        group_by:
+          func: avg
+          duration: 10s
+          fill: last
       grid_options:
         columns: full
+        rows: auto
+      hours_12: false
+  - type: grid
+    column_span: 4
+    cards:
+    - type: heading
+      heading: Last 4 hours
+      heading_style: title
+      icon: mdi:clock-outline
     - type: custom:apexcharts-card
       header:
-        show: true
-        title: Last 4 hours
-        show_states: true
-        colorize_states: true
+        show: false
       graph_span: 4h
+      now:
+        show: true
       update_interval: 1min
       yaxis:
-      - id: power
-        min: 0
-        decimals: 0
-        align_to: 500
-        apex_config:
-          title:
-            text: W
-      - id: soc
-        opposite: true
-        min: 0
-        max: 100
-        decimals: 0
-        apex_config:
-          title:
-            text: '%'
-          tickAmount: 4
+      - *id001
+      - *id002
       apex_config:
+        chart:
+          height: 240
         legend:
           show: true
-        chart:
-          height: 260
+        tooltip:
+          x:
+            format: HH:mm
+        grid:
+          borderColor: rgba(127, 127, 127, 0.25)
+          strokeDashArray: 0
+        fill:
+          type: solid
       series:
-      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
-        name: Input
-        color: '#3fa34d'
-        yaxis_id: power
-        type: area
-        stroke_width: 2
-        curve: smooth
-        group_by:
-          func: avg
-          duration: 1min
       - entity: sensor.ecoflow_delta_3_max_plus_total_output_power
         name: Output
-        color: '#e5732e'
+        color: '#4CAF50'
         yaxis_id: power
         type: area
-        stroke_width: 2
-        curve: smooth
+        curve: straight
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        opacity: 0.3
+        stroke_width: 1
         group_by:
           func: avg
-          duration: 1min
+          duration: 10s
+          fill: last
+      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+        name: Input
+        color: '#E53935'
+        yaxis_id: power
+        type: area
+        curve: straight
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        opacity: 0.3
+        stroke_width: 1
+        transform: return x * -1;
+        group_by:
+          func: avg
+          duration: 10s
+          fill: last
       - entity: sensor.ecoflow_delta_3_max_plus_battery_level
         name: Battery level
-        color: '#4a7fb5'
+        color: '#9575CD'
         yaxis_id: soc
         type: line
-        stroke_width: 3
-        curve: smooth
+        curve: straight
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        stroke_width: 2
+        stroke_dash: 4
         group_by:
           func: avg
-          duration: 1min
+          duration: 10s
+          fill: last
       grid_options:
         columns: full
+        rows: auto
+      hours_12: false
+  - type: grid
+    column_span: 4
+    cards:
+    - type: heading
+      heading: Last 24 hours
+      heading_style: title
+      icon: mdi:history
     - type: custom:apexcharts-card
       header:
-        show: true
-        title: Last 24 hours
-        show_states: true
-        colorize_states: true
+        show: false
       graph_span: 24h
-      update_interval: 1min
       yaxis:
-      - id: power
-        min: 0
-        decimals: 0
-        align_to: 500
-        apex_config:
-          title:
-            text: W
-      - id: soc
-        opposite: true
-        min: 0
-        max: 100
-        decimals: 0
-        apex_config:
-          title:
-            text: '%'
-          tickAmount: 4
+      - *id001
+      - *id002
       apex_config:
+        chart:
+          height: 240
         legend:
           show: true
-        chart:
-          height: 260
+        tooltip:
+          x:
+            format: dd-MM HH:mm
+        grid:
+          borderColor: rgba(127, 127, 127, 0.25)
+          strokeDashArray: 0
+        fill:
+          type: solid
       series:
-      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
-        name: Input
-        color: '#3fa34d'
-        yaxis_id: power
-        type: area
-        stroke_width: 2
-        curve: smooth
-        group_by:
-          func: avg
-          duration: 5min
       - entity: sensor.ecoflow_delta_3_max_plus_total_output_power
         name: Output
-        color: '#e5732e'
+        color: '#4CAF50'
         yaxis_id: power
         type: area
-        stroke_width: 2
-        curve: smooth
-        group_by:
-          func: avg
-          duration: 5min
+        curve: monotoneCubic
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        opacity: 0.3
+        stroke_width: 1
+        statistics:
+          type: mean
+          period: 5minute
+          align: middle
+      - entity: sensor.ecoflow_delta_3_max_plus_total_input_power
+        name: Input
+        color: '#E53935'
+        yaxis_id: power
+        type: area
+        curve: monotoneCubic
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        opacity: 0.3
+        stroke_width: 1
+        transform: return x * -1;
+        statistics:
+          type: mean
+          period: 5minute
+          align: middle
       - entity: sensor.ecoflow_delta_3_max_plus_battery_level
         name: Battery level
-        color: '#4a7fb5'
+        color: '#9575CD'
         yaxis_id: soc
         type: line
-        stroke_width: 3
-        curve: smooth
-        group_by:
-          func: avg
-          duration: 5min
+        curve: monotoneCubic
+        float_precision: 0
+        extend_to: now
+        show:
+          in_header: false
+          legend_value: false
+        stroke_width: 2
+        stroke_dash: 4
+        statistics:
+          type: mean
+          period: 5minute
+          align: middle
       grid_options:
         columns: full
+        rows: auto
+      hours_12: false
