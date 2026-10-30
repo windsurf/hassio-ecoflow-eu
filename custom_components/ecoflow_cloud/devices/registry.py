@@ -15,93 +15,101 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-# SN prefix → (model name, device family)
-# Sorted longest-prefix-first at lookup time for specificity.
-# Sources: EcoFlow developer docs, live MQTT analysis, community HA integration
+# SN prefix -> model name. Longest prefix wins, so a family prefix (R65) can sit
+# next to a specific one (R651).
+#
+# Sources (details and licences: README2, "Serial prefix sources"). Only the
+# serial prefix of a model is taken from them, no code and no text:
+#   [R]   reported by an owner in a repository issue, or from our own devices
+#   [IO]  foxthefox/ioBroker.ecoflow-mqtt, lib/ecoflow_data.js (MIT)
+#   [HI]  MichelFR/ha-ecoflow-iot, KNOWN_PREFIXES.md (MIT); it cites EcoFlow
+#         developer-doc example serials [E] and the EcoFlow Android app's
+#         device-code registry [A]
+#   [SH]  shuette42/ecoflow-energy-ha, README and const.py (MIT)
+#   [ZB]  zarbjustin/uk.co.zarb.ecoflow, README and tests (GPL-3.0)
+#   [P]   carried over from earlier versions, no outside source found
+# Where a model shares the profile of a sibling, the comment says so: the entity
+# list is then the sibling's and has not been verified on that model.
 _SN_PREFIX_MAP: dict[str, str] = {
-    # ── Delta 3 series ───────────────────────────────────────────────────
-    "D361":  "Delta 3 1500",
-    "D362":  "Delta 3 Plus",
-    "D381":  "Delta 3 Max",
-    "D3M1":  "Delta 3 Max Plus",    # v0.4.0 — own flat-key profile (devices/delta3_max_plus.py)
+    # -- Delta 3 series ---------------------------------------------------
+    "D361":  "Delta 3 1500",         # [R] own device
+    "P231":  "Delta 3 1500",         # [IO][SH] base Delta 3, shares the Delta 3 profile
+    "D362":  "Delta 3 Plus",         # [P]
+    "P351":  "Delta 3 Plus",         # [IO][SH]
+    "D381":  "Delta 3 Max",          # [P]
+    "D3N1":  "Delta 3 Max",          # [HI][SH]
+    "D3M1":  "Delta 3 Max Plus",     # [R][HI] shared with the Max; own flat-key profile
 
-    # ── Delta Pro series ─────────────────────────────────────────────────
-    "DGEA":  "Delta Pro 3",
-    "DGEB":  "Delta Pro Ultra",
-    "DAEB":  "Delta Pro",
+    # -- Delta Pro series -------------------------------------------------
+    "DCAB":  "Delta Pro",            # [HI][E] sn=DCABZ...; was Delta Max before v0.4.1
+    "DCEB":  "Delta Pro",            # [HI][IO]
+    "DGEA":  "Delta Pro 3",          # [P]
+    "MR5":   "Delta Pro 3",          # [HI][A][IO] MR51
+    "Y71":   "Delta Pro Ultra",      # [HI][A]; DGEB was Delta Pro Ultra before v0.4.1
+    "DGEB":  "Smart Generator",      # [IO] README: "DGEB...." is the generator; no profile yet
 
-    # ── Delta 2 series ───────────────────────────────────────────────────
-    "R331":  "Delta 2",
-    "R351":  "Delta 2 Max",
+    # -- Delta 2 series ---------------------------------------------------
+    "R33":   "Delta 2",              # [HI][E][IO] R331
+    "R35":   "Delta 2 Max",          # [HI][A][IO] R351
 
-    # ── Delta 1 series ───────────────────────────────────────────────────
-    "DCAB":  "Delta Max",
-    "DAAZ":  "Delta Mini",
-    "DBEB":  "Delta Mini",          # v0.4.1 — reporter serial DBEBZ5XDA..., API names it "DELTA mini" (issue #2)
-    "DBKB":  "Delta Mini",          # v0.4.1 — DBKBZ5XDA... from a Delta mini diagnostics dump
+    # -- Delta (generation 1) ---------------------------------------------
+    "DAAB":  "Delta Max",            # [R] issue #3, firmware V1.6.2.89
+    "DAEB":  "Delta Max",            # [IO] listed for Delta, Delta Max and Delta Mini alike; was Delta Pro
+    "DAAZ":  "Delta Mini",           # [P]
+    "DBEB":  "Delta Mini",           # [R] issue #2
+    "DBKB":  "Delta Mini",           # [R] diagnostics dump
+    "DBAB":  "Delta Mini",           # [HI] field-observed; REST answers error 1006 (MQTT only)
 
-    # ── River 3 series ───────────────────────────────────────────────────
-    "R641":  "River 3",
-    "R651":  "River 3 Plus",
-    "R655":  "River 3",             # v0.4.1 — recorded River 3 serial prefix
-    "R631":  "River 3 Plus",        # v0.4.1 — was River 2 Max; a River 3 Plus owner reported R631 (issue #1)
+    # -- River 3 series ---------------------------------------------------
+    "R64":   "River 3",              # [P] R641
+    "R65":   "River 3",              # [R][SH][IO] R651 (issue #4), R655
+    "R63":   "River 3 Plus",         # [SH][IO][R] R631 (issue #1)
 
-    # ── Stream AC series (grid-tied micro-inverter) ─────────────────────
-    "BK31":  "Stream AC Pro",
-    "BK11":  "Stream Ultra",
-    "BK":    "Stream AC",           # short prefix — must be after longer BK31/BK11
+    # -- River 2 series ---------------------------------------------------
+    "R60":   "River 2",              # [HI] field-observed (256 Wh); R601/R602 below stay River Max/Pro [P]
+    "R61":   "River 2 Max",          # [HI][SH] R611
+    "R62":   "River 2 Pro",          # [HI][A]; R621 was River 2 before v0.4.1
 
-    # ── Smart Home Panel ───────────────────────────────────────────────────
-    # SHP1: JSON SET protocol (v0.3.10 — sensors + 12 channel switches + EPS mode)
-    # SHP2: protobuf cmdFunc=12 (v0.3.10 — sensor stubs only, full decoder TBD)
-    "SH10":  "Smart Home Panel",
-    "SH20":  "Smart Home Panel 2",
+    # -- River (generation 1) ---------------------------------------------
+    "R601":  "River Max",            # [P] conflicts with R60 = River 2 [HI]; unverified
+    "R602":  "River Pro",            # [P] idem
+    "R501":  "River Mini",           # [P]
 
-    # ── PowerKit (modular off-grid system) ─────────────────────────────────
-    # Read-only in v0.3.10 — foxthefox documents only GET commands. SN prefix
-    # placeholder "M106" derived from foxthefox example "M106ZAB4Z000001F".
-    # Update when an owner reports their actual SN via GitHub issue.
-    "M106":  "PowerKit",
+    # -- Stream series ----------------------------------------------------
+    "BK11":  "Stream Ultra",         # [SH][ZB][IO]
+    "BK12":  "Stream Ultra",         # [ZB][HI] Stream Pro; shares the Stream Ultra profile
+    "BK31":  "Stream AC Pro",        # [SH][ZB][IO]
+    "BK41":  "Stream AC Pro",        # [SH][ZB] Stream Max (AC-coupled); shares the Stream AC Pro profile
+    "BK51":  "Stream AC",            # [SH][ZB]
+    "BK61":  "Stream Ultra",         # [SH][ZB][IO] Stream Ultra X; shares the Stream Ultra profile
+    "BK01":  "Stream Microinverter", # [SH][ZB] no profile yet
+    "BK21":  "Smart Meter",          # [HI][IO][ZB] no profile yet
 
-    # ── PowerOcean (residential energy storage system) ─────────────────────
-    # All-in-one home battery + hybrid inverter (Tesla Powerwall / Sessy class).
-    # v0.3.10: registration + sensor stubs. Full protobuf decoder for
-    # cmdFunc=96 (JTS1_EMS_HEARTBEAT) and cmdFunc=254/cmdId=32
-    # (EnergyTotalReport) coming in a later version once test data is available.
-    # SN prefixes are placeholders — update via GitHub issues.
-    "PO11":  "PowerOcean",        # single-phase
-    "PO31":  "PowerOcean Plus",   # three-phase / commercial variant
-    "POFI":  "PowerOcean Fit",    # compact entry-level model
+    # -- PowerStream and Smart Plug ---------------------------------------
+    "HW51":  "PowerStream",          # [HI][A][IO] 600 W and 800 W alike; HW52 was PowerStream 800W before v0.4.1
+    "HW52":  "Smart Plug",           # [HI][A][IO]
 
-    # ── River 2 series ───────────────────────────────────────────────────
-    "R621":  "River 2",
-    "R611":  "River 2 Max",         # v0.4.1 — was R631
-    "R622":  "River 2 Pro",
+    # -- Smart Home Panel -------------------------------------------------
+    "SH10":  "Smart Home Panel",     # [IO]
+    "SP10":  "Smart Home Panel",     # [HI] medium confidence; was Smart Plug before v0.4.1
+    "SH20":  "Smart Home Panel 2",   # [IO]
+    "HD3":   "Smart Home Panel 2",   # [HI][A]
 
-    # ── River 1 series ───────────────────────────────────────────────────
-    "R601":  "River Max",
-    "R602":  "River Pro",
-    "R501":  "River Mini",
+    # -- PowerKit ---------------------------------------------------------
+    "M10":   "PowerKit",             # [HI][A][IO] M106
 
-    # ── PowerStream / Solar ──────────────────────────────────────────────
-    "HW51":  "PowerStream 600W",
-    "HW52":  "PowerStream 800W",
-    "BKW":   "PowerStream",
+    # -- PowerOcean -------------------------------------------------------
+    # Read-only stubs; the decoder follows when test data is available.
+    "HJ3":   "PowerOcean",           # [HI][A][IO] HJ31
+    "J32":   "PowerOcean",           # [HI][SH] J327, J32D, J32E
+    "HC31":  "PowerOcean Fit",       # [IO]
+    "R37":   "PowerOcean Plus",      # [IO][SH] R371..R374
 
-    # ── Smart devices ────────────────────────────────────────────────────
-    "SP10":  "Smart Plug",
-
-    # ── Climate ──────────────────────────────────────────────────────────
-    "BX11":  "Glacier",
-    # Glacier 55 — placeholder SN prefix (foxthefox does not document the
-    # actual prefix; "BX55" follows the original Glacier naming pattern).
-    # Update when an owner reports their actual SN via GitHub issue.
-    "BX55":  "Glacier 55",
-    "KT21":  "Wave 2",
-    # Wave 3 — placeholder SN prefix (foxthefox does not document the actual
-    # prefix; "KT3" follows the Wave 2 naming pattern). Update when a Wave 3
-    # owner reports their actual SN via GitHub issue.
-    "KT3":   "Wave 3",
+    # -- Climate ----------------------------------------------------------
+    "BX1":   "Glacier",              # [HI][A][IO] BX11
+    "RF45":  "Glacier 55",           # [IO]
+    "KT2":   "Wave 2",               # [HI][A][IO] KT21
+    "AC71":  "Wave 3",               # [IO][SH]
 }
 
 # Default model for unknown devices

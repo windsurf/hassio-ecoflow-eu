@@ -1,6 +1,6 @@
 """Device definition for EcoFlow River 3 and River 3 Plus.
 
-SN prefix: R641 (River 3), R651 (River 3 Plus)
+SN prefix: R641 (River 3), R651 (River 3), R631 (River 3 Plus)
 
 Protocol: Gen 3 (cmdFunc=254) — same command format as Delta Pro 3:
   - Command envelope: {sn, cmdId:17, cmdFunc:254, dest:2, dirDest:1, dirSrc:1, needAck:true, params:{...}}

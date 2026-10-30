@@ -35,10 +35,10 @@ The Max Plus does **not** use the dotted keys of the Delta 3 1500 (`pd.soc`, `in
 
 ## Getting Credentials
 
-### Option A — App Login *(recommended for Delta 3 1500 and older Delta 3 devices; for the Delta 3 Max Plus use Option B)*
-Use your regular EcoFlow app email and password. No extra setup needed.
+### Option A — App Login *(start here)*
+Use your regular EcoFlow app email and password. No extra setup needed. For the Delta 3 Max Plus it reads everything plus a few BMS values; the AC output switch cannot show its real state and control over this route is not tested. If that is not enough, use Option B.
 
-### Option B — Developer API
+### Option B — Developer API *(when App Login is not enough)*
 1. Go to [developer-eu.ecoflow.com](https://developer-eu.ecoflow.com/) and sign in
 2. Click **Become a Developer** and wait for the approval email
 3. Go to **Security** and create an Access Key + Secret Key
@@ -217,9 +217,9 @@ Confirmed via live protocol analysis (v0.2.22–v0.2.24): Delta 3 uses **MQTT JS
 
 | Device | Base | Extra | Energy | Slaves | Total |
 |--------|------|-------|--------|--------|-------|
-| Delta Pro | 34 | +2 (DC Car, Anderson) | 5 | 2×16 | **57** |
-| Delta Max | 34 | +1 (DC Car) | 5 | 2×16 | **56** |
-| Delta Mini | 34 | +2 (DC Car, Anderson) | 5 | none | **41** |
+| Delta Pro | DCAB, DCEB | +2 (DC Car, Anderson) | 5 | 2×16 | **57** |
+| Delta Max | DAAB, DAEB | +1 (DC Car) | 5 | 2×16 | **56** |
+| Delta Mini | DAAZ, DBEB, DBKB, DBAB | +2 (DC Car, Anderson) | 5 | none | **41** |
 
 ### River 2 / River 2 Max — Sensors (31)
 
@@ -331,45 +331,45 @@ logger:
 
 | Device | SN Prefix | Protocol | Sensors | Switches | Numbers | Selects | Status |
 |--------|-----------|----------|---------|----------|---------|---------|--------|
-| Delta 3 1500 | D361 | JSON SET | ~80 | 13 | 9 | 5 | ✅ Live tested |
-| Delta 3 Plus | D362 | JSON SET | ~91 | 13 | 9 | 5 | ✅ Added v0.3.9 (+PV2) |
-| Delta 3 Max | D381 | JSON SET | ~107 | 13 | 9 | 5 | ✅ Added v0.3.9 (+PV2+diag) |
+| Delta 3 1500 | D361, P231 | JSON SET | ~80 | 13 | 9 | 5 | ✅ Live tested |
+| Delta 3 Plus | D362, P351 | JSON SET | ~91 | 13 | 9 | 5 | ✅ Added v0.3.9 (+PV2) |
+| Delta 3 Max | D381, D3N1 | JSON SET | ~107 | 13 | 9 | 5 | ✅ Added v0.3.9 (+PV2+diag) |
 | **Delta 3 Max Plus** | D3M1 | Developer API: flat keys + dp3 command envelope | 20 | 7 | 3 | — | ✅ v0.4.0 live tested (read + control) |
-| Delta Pro 3 | DGEA | Gen 3 cmdFunc=254 | 14 | 9 | 13 | — | ✅ Full control |
-| Delta Pro Ultra | DGEB | cmdCode YJ751 | 45 | 7 | 10 | 1 | ✅ Full control |
+| Delta Pro 3 | DGEA, MR5 | Gen 3 cmdFunc=254 | 14 | 9 | 13 | — | ✅ Full control |
+| Delta Pro Ultra | Y71 | cmdCode YJ751 | 45 | 7 | 10 | 1 | ✅ Full control |
 | Delta Pro | DAEB | Gen 1 TCP | ~40 | 4 | 4 | 3 | ✅ Full control |
-| Delta 2 | R331 | Gen 2 moduleType | ~50 | 8 | 6 | 5 | ✅ Full control |
-| Delta 2 Max | R351 | Gen 2 moduleType | ~50 | 7 | 6 | 4 | ✅ Full control |
-| Delta Max | DCAB | Gen 1 TCP | ~30 | 4 | 4 | — | ✅ Full control |
+| Delta 2 | R33 | Gen 2 moduleType | ~50 | 8 | 6 | 5 | ✅ Full control |
+| Delta 2 Max | R35 | Gen 2 moduleType | ~50 | 7 | 6 | 4 | ✅ Full control |
+| Delta Max | DCAB, DAAB | Gen 1 TCP | ~30 | 4 | 4 | — | ✅ Full control |
 | Delta Mini | DAAZ, DBEB, DBKB | Gen 1 TCP | ~18 | 1 | 2 | 3 | ✅ Full control |
-| River 3 | R641, R655 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
-| River 3 Plus | R651, R631 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
-| River 2 | R621 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
-| River 2 Max | R611 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
-| River 2 Pro | R622 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
+| River 3 | R64, R65 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
+| River 3 Plus | R63 | Gen 3 cmdFunc=254 | 20 | 6 | 7 | — | ✅ Full control |
+| River 2 | R60 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
+| River 2 Max | R61 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
+| River 2 Pro | R62 | Gen 2 moduleType | ~30 | 3 | 3 | 3 | ✅ Full control |
 | River Max | R601 | Gen 1 TCP | ~28 | 2 | 2 | 2 | ✅ Full control |
 | River Pro | R602 | Gen 1 TCP | ~32 | 2 | 2 | 2 | ✅ Full control |
 | River Mini | R501 | Gen 1 TCP | ~17 | — | — | — | ✅ Sensors only |
-| PowerStream | HW51/52/BKW | Protobuf | ~25 | 1 | 4 | 1 | ✅ Full control |
-| Smart Plug | SP10 | Protobuf | ~8 | 1 | 2 | — | ✅ Full control |
-| Glacier | BX11 | Gen 2 moduleType | ~20 | 3 | 3 | — | ✅ Full control |
-| Wave 2 | KT21 | Gen 2 moduleType | ~15 | — | 1 | 4 | ✅ Full control |
-| Stream AC | BK | Protobuf cmdFunc=254 | 18 | — | 2 | — | ✅ Added v0.3.9 |
-| Stream AC Pro | BK31 | Protobuf cmdFunc=254 | 27 | 2 | 5 | — | ✅ Added v0.3.9 |
-| Stream Ultra | BK11 | Protobuf cmdFunc=254 | 29 | 2 | 5 | — | ✅ Added v0.3.9 |
-| **Wave 3** | **KT3** ⚠️ | **Protobuf cmdFunc=254** | **25** | **—** | **—** | **—** | **🆕 v0.3.10 read-only** |
-| **Glacier 55** | **BX55** ⚠️ | **Protobuf cmdFunc=254** | **22** | **4** | **6** | **1** | **🆕 v0.3.10 full control** |
-| **Smart Home Panel** | **SH10** | **JSON SET (TCP)** | **45** | **13** | **2** | **—** | **🆕 v0.3.10 full control** |
-| **Smart Home Panel 2** | **SH20** | **Protobuf cmdFunc=12** | **5** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
-| **PowerKit** | **M106** ⚠️ | **JSON heartbeat** | **30** | **—** | **—** | **—** | **🆕 v0.3.10 read-only** |
-| **PowerOcean** | **PO11** ⚠️ | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
-| **PowerOcean Plus** | **PO31** ⚠️ | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
-| **PowerOcean Fit** | **POFI** ⚠️ | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| PowerStream | HW51 | Protobuf | ~25 | 1 | 4 | 1 | ✅ Full control |
+| Smart Plug | HW52 | Protobuf | ~8 | 1 | 2 | — | ✅ Full control |
+| Glacier | BX1 | Gen 2 moduleType | ~20 | 3 | 3 | — | ✅ Full control |
+| Wave 2 | KT2 | Gen 2 moduleType | ~15 | — | 1 | 4 | ✅ Full control |
+| Stream AC | BK51 | Protobuf cmdFunc=254 | 18 | — | 2 | — | ✅ Added v0.3.9 |
+| Stream AC Pro | BK31, BK41 | Protobuf cmdFunc=254 | 27 | 2 | 5 | — | ✅ Added v0.3.9 |
+| Stream Ultra | BK11, BK12, BK61 | Protobuf cmdFunc=254 | 29 | 2 | 5 | — | ✅ Added v0.3.9 |
+| **Wave 3** | AC71 | **Protobuf cmdFunc=254** | **25** | **—** | **—** | **—** | **🆕 v0.3.10 read-only** |
+| **Glacier 55** | RF45 | **Protobuf cmdFunc=254** | **22** | **4** | **6** | **1** | **🆕 v0.3.10 full control** |
+| **Smart Home Panel** | SH10, SP10 | **JSON SET (TCP)** | **45** | **13** | **2** | **—** | **🆕 v0.3.10 full control** |
+| **Smart Home Panel 2** | SH20, HD3 | **Protobuf cmdFunc=12** | **5** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| **PowerKit** | M10 | **JSON heartbeat** | **30** | **—** | **—** | **—** | **🆕 v0.3.10 read-only** |
+| **PowerOcean** | HJ3, J32 | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| **PowerOcean Plus** | R37 | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
+| **PowerOcean Fit** | HC31 | **Protobuf cmdFunc=96** | **22** | **—** | **—** | **—** | **🔶 v0.3.10 sensor stubs** |
 
 **33 devices with active entity support** + 3 sensor-stub devices awaiting decoder completion.
 Protocol variants: Gen 1 (TCP), Gen 2 (moduleType), Gen 3 (cmdFunc=254), Protobuf (PowerStream/Smart Plug/Stream AC/cmdFunc=96), cmdCode (YJ751), JSON SET (Delta 3, SHP1).
 
-⚠️ = placeholder SN prefix — report actual SN via GitHub issue for correction
+Serial prefixes: see [Serial prefix sources](#serial-prefix-sources). A device whose prefix names a model without a profile (Smart Generator `DGEB`, Stream Microinverter `BK01`, Smart Meter `BK21`) is recognised by name and gets no entities yet.
 🔶 = entities registered but decoder routing incomplete
 
 ---
@@ -380,13 +380,18 @@ This integration is licensed under the Apache License 2.0 (see [LICENSE](LICENSE
 
 ## Changelog
 
-### v0.4.1 -- Serial prefixes corrected
+### v0.4.1 -- Serial prefixes, dashboard, recertification
 
-- `R631` is recognised as River 3 Plus (was River 2 Max); the River 2 Max is `R611`. `R655` is recognised as River 3. Both River 3 prefixes follow the River 3 route (App Login in Auto-detect; REST SET blocked). Reported in issue #1.
-- `DBEB` and `DBKB` are recognised as Delta Mini. Reported in issue #2. EcoFlow may refuse the REST quota call for this device (error 1006); the values then arrive over MQTT only.
+- **Serial prefix table rebuilt** from owner reports and several community projects (see *Serial prefix sources*). Reported in issues #1, #2, #3 and #4.
+- Corrected: `R631` is River 3 Plus (was River 2 Max); `R651` is River 3 (was Plus); `DBEB`, `DBKB` and `DBAB` are Delta Mini; `DAAB` and `DAEB` are Delta Max; `DCAB` and `DCEB` are Delta Pro (`DCAB` was Delta Max, `DAEB` was Delta Pro); `Y71` is Delta Pro Ultra and `DGEB` the Smart Generator; `R62` is River 2 Pro (`R621` was River 2); `HW52` is the Smart Plug (was PowerStream 800W); `SP10` is Smart Home Panel (was Smart Plug).
+- Added: `D3N1`, `P351`, `P231`, `MR5`, `R33`, `R35`, `R60`, `R61`, `R63`, `R64`, `R65`, `BK01` to `BK61`, `BX1`, `RF45`, `KT2`, `AC71`, `HD3`, `M10`, `HJ3`, `J32`, `R37`, `HC31`. The placeholder prefixes (`BKW`, `BX55`, `KT3`, `M106`, `PO11`, `PO31`, `POFI`) and the catch-all `BK` are replaced by these.
+- Stream Pro (`BK12`), Stream Max (`BK41`) and Stream Ultra X (`BK61`) share the profile of a sibling model; the entities have not been verified on those models. Models without a profile (Smart Generator, Stream Microinverter, Smart Meter) are recognised by name and get no entities yet.
+- The River 3 and River 3 Plus routes follow the River 3 series (App Login in Auto-detect; REST SET blocked); the same holds for the added Delta 3 prefixes.
+- Remove the integration entry and add it again to apply a corrected model to an existing device.
+- Untested on real devices: only the Delta 3 Max Plus and the Delta 3 1500 are owned by the author.
 - Open API route: the periodic recertification (every 10 minutes) now runs only on the App Login route. On the Open API route it could only skip, which logged the warning `recertification returned empty client_id` twice per cycle and called EcoFlow for nothing.
-- Remove the integration entry and add it again to apply the corrected model to an existing device.
-- Untested on real devices: neither the River 3 Plus nor the Delta mini is owned by the author.
+- Cleanup: the duplicate brand folder in the repository root is gone; the icon lives in `custom_components/ecoflow_cloud/brand/`.
+- Known gap: River 3 telemetry over App Login is not decoded yet (see Not ported yet below).
 - **Dashboard:** the Overview tab follows the hand-tuned layout (header with badges, gauges, a *Control* section with the three output switches, Energy Backup and the three limit sliders, and a smaller *Power flow* section; the USB and battery sections are gone). AC Output 2 and DC 12V Output are disabled by default: enable them to get their tiles. The three History charts now have a heading each, output above and input below the zero line, a dashed battery level, a power axis that scales with the data (no fixed 3000 W) and a 5-minute mean for the last 24 hours. Press **Configure → Replace the dashboard with a fresh one** to get the new layout; `dashboard/ecoflow_max_plus.yaml` is regenerated.
 
 ### v0.4.0 -- Delta 3 Max Plus, diagnostics, dashboard, device profiles
@@ -773,6 +778,22 @@ The first releases built the integration around the Delta 3 1500 (`D361`). Detai
 - `manifest.json` key order, `brand/icon.png`, GitHub Actions `checkout@v5`.
 
 What the live tests showed about the `D361` is in the section *D361-Specific Behaviour* above.
+
+---
+
+## Serial prefix sources
+
+EcoFlow publishes no table of serial prefixes. The table in `devices/registry.py` is compiled from the sources below; every entry there names the source it rests on. Only the prefix of a model, a fact about the hardware, was taken from these projects: no code and no text. The licences are listed for reference.
+
+| Source | Licence | Used for |
+|--------|---------|----------|
+| Owner reports in the issues of this repository, and the author's own devices | -- | `D361`, `D3M1`, `DAAB`, `DBEB`, `DBKB`, `R631`, `R651`, `R655` |
+| [MichelFR/ha-ecoflow-iot](https://github.com/MichelFR/ha-ecoflow-iot), `KNOWN_PREFIXES.md` | MIT | Prefix families (`R60`, `R61`, `R62`, `MR5`, `Y71`, `DCAB`, `DCEB`, `D3N1`, `HW51`, `HW52`, `BX1`, `KT2`, `M10`, `HJ3`, `J32`, `HD3`, `BK21`, `DBAB`). It cites the example serials in the EcoFlow developer documentation and the EcoFlow Android app's device-code registry; we have not read those two ourselves |
+| [foxthefox/ioBroker.ecoflow-mqtt](https://github.com/foxthefox/ioBroker.ecoflow-mqtt), `lib/ecoflow_data.js` | MIT | Example serials per model (`P231`, `P351`, `R655`, `R631`, `RF45`, `AC71`, `HC31`, `R37`, `SH10`, `SH20`, `DGEB`, `DAEB`, `M106`, `BK11`, `BK31`, `BK61`, `KT21`) |
+| [shuette42/ecoflow-energy-ha](https://github.com/shuette42/ecoflow-energy-ha), README and `const.py` | MIT | `R655`, `R631`, `R611`, `D3N1`, `P351`, `P231`, `BK01` to `BK61`, `J32x`, `R37x`, `AC71` |
+| [zarbjustin/uk.co.zarb.ecoflow](https://github.com/zarbjustin/uk.co.zarb.ecoflow), README and tests | GPL-3.0 | Cross-check of the Stream prefixes `BK01` to `BK61` |
+
+Where the sources disagree, the entry with the most independent sources wins; the comment in `registry.py` marks the rest. Open points: `DAEB` and `DCAB` (Delta Max, Delta Pro), `R601` and `R602` against `R60`, `R641`, `R651` and the shared profiles of Stream Pro, Stream Max and Stream Ultra X. Report your serial prefix if it is wrong for your device.
 
 ---
 

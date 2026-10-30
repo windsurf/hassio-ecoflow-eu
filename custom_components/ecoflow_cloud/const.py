@@ -50,27 +50,30 @@ MANUFACTURER = "EcoFlow"
 # the only route that reports the AC output state.
 REST_SET_BLOCKED_SN_PREFIXES = (
     "D361",   # Delta 3 / Delta 3 1500 — confirmed blocked (28 March 2026)
+    "P231",   # Delta 3 (v0.4.1) — assumed blocked (same series)
     "D362",   # Delta 3 Plus — assumed blocked (same series)
+    "P351",   # Delta 3 Plus (v0.4.1) — assumed blocked (same series)
     "D381",   # Delta 3 Max — assumed blocked (same series)
-    "R641",   # River 3 — assumed blocked
-    "R651",   # River 3 Plus — assumed blocked
-    "R655",   # River 3 (v0.4.1) — same series
-    "R631",   # River 3 Plus (v0.4.1) — same series
+    "D3N1",   # Delta 3 Max (v0.4.1) — assumed blocked (same series)
+    "R64",    # River 3 — assumed blocked
+    "R65",    # River 3 (v0.4.1, R651 and R655) — same series
+    "R63",    # River 3 Plus (v0.4.1, R631) — same series
 )
 
 PRIVATE_API_SN_PREFIXES = (
     "D361",   # Delta 3 / Delta 3 1500
+    "P231",   # Delta 3 (v0.4.1)
     "D362",   # Delta 3 Plus
+    "P351",   # Delta 3 Plus (v0.4.1)
     "D381",   # Delta 3 Max (tentative)
-    "R641",   # River 3
-    "R651",   # River 3 Plus (tentative)
-    "R655",   # River 3 (v0.4.1)
-    "R631",   # River 3 Plus (v0.4.1)
-    "BKW",    # PowerStream micro-inverter
-    "HW51",   # PowerStream 600W
-    "HW52",   # PowerStream 800W
-    "DGEB",   # Delta Pro Ultra
+    "D3N1",   # Delta 3 Max (v0.4.1)
+    "R64",    # River 3
+    "R65",    # River 3 (v0.4.1, R651 and R655)
+    "R63",    # River 3 Plus (v0.4.1, R631)
+    "HW51",   # PowerStream (600 W and 800 W)
+    "Y71",    # Delta Pro Ultra (v0.4.1; DGEB is the Smart Generator)
     "DGEA",   # Delta Pro 3
+    "MR5",    # Delta Pro 3 (v0.4.1)
 )
 
 # Sentinel value used by EcoFlow in cfgChgWatts to mean "keep current value".
