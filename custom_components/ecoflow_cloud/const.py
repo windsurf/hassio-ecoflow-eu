@@ -1,7 +1,26 @@
 """Constants for EcoFlow Cloud integration."""
 
 DOMAIN              = "ecoflow_cloud"
-INTEGRATION_VERSION = "0.4.1"
+INTEGRATION_VERSION = "0.4.2"
+
+
+
+def open_api_client_id(sn: str) -> str:
+    """MQTT client id for one device on the Open API route.
+
+    Every device of an account shares the same certificate account, and the
+    broker allows one connection per client id, so the id must differ per
+    device. The serial number comes first and the id stays within 23 characters
+    (the MQTT 3.1.1 limit every broker accepts); a serial number too long for
+    that is replaced by a stable hash of it.
+    """
+    sn = str(sn or "")
+    cid = f"HA-{sn}"
+    if sn and len(cid) <= 23:
+        return cid
+    import hashlib
+    return "HA-" + hashlib.sha1(sn.encode()).hexdigest()[:20]
+
 
 # Config entry keys
 CONF_ACCESS_KEY = "access_key"

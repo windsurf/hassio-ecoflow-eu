@@ -22,7 +22,7 @@ from .const import (
     CONF_DEV_ACCESS_KEY, CONF_DEV_SECRET_KEY, CONF_DEV_API_HOST,
     AUTH_MODE_PRIVATE,
     API_HOST_DEFAULT, API_HOST_EU, MQTT_KEEPALIVE, MQTT_RECONNECT_INTERVAL,
-    REST_SET_BLOCKED_SN_PREFIXES, MQTT_DIAG_BUFFER_SIZE,
+    REST_SET_BLOCKED_SN_PREFIXES, MQTT_DIAG_BUFFER_SIZE, open_api_client_id,
 )
 from .api_client import EcoFlowAPI, EcoFlowPrivateAPI, EcoFlowAPIError
 from .coordinator import EcoflowCoordinator
@@ -496,7 +496,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return c
 
     # Initial connect
-    init_cid  = mqtt_info.get("_client_id") or f"HA-{mqtt_info.get('certificateAccount','')}-{sn}"[:23]
+    init_cid  = mqtt_info.get("_client_id") or open_api_client_id(sn)
     init_user = mqtt_info.get("certificateAccount", "")
     init_pass = mqtt_info.get("certificatePassword", "")
 

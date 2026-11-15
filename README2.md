@@ -380,6 +380,11 @@ This integration is licensed under the Apache License 2.0 (see [LICENSE](LICENSE
 
 ## Changelog
 
+### v0.4.2 -- MQTT client id per device
+
+- **Fixed:** with two or more devices under one account on the Developer API, all devices connected with the same MQTT client id. The broker allows one connection per client id, so each new connection dropped the previous one (`rc=7`, `rc=2`, `rc=5`) and the devices reconnected in a loop. The client id is now built from the serial number of each device (`HA-<serial number>`, at most 23 characters), so every device keeps its own stable connection. Reported in issue #6.
+- The App Login route is unchanged; it already issues its own client id.
+
 ### v0.4.1 -- Serial prefixes, dashboard, recertification
 
 - **Serial prefix table rebuilt** from owner reports and several community projects (see *Serial prefix sources*). Reported in issues #1, #2, #3 and #4.
